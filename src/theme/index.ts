@@ -1,0 +1,9 @@
+// Central theme export
+
+export { colors } from './colors';
+export { typography } from './typography';
+export { spacing, layout } from './spacing';
+
+export type { Colors } from './colors';
+export type { Typography } from './typography';
+export type { Spacing, Layout } from './spacing';
