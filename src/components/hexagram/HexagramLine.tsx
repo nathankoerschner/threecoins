@@ -150,12 +150,13 @@ const styles = StyleSheet.create({
     height: LINE_HEIGHT, // Keep original height for proper spacing
     marginVertical: LINE_SPACING / 2,
     justifyContent: 'center',
-    alignItems: 'flex-start',
+    alignItems: 'flex-start', // Keep left-aligned for animation
   },
   animatedWrapper: {
     overflow: 'hidden', // Clips both line and glow together
     position: 'relative',
     height: LINE_HEIGHT + 8,
+    marginLeft: -4, // Shift left by 4px to center the lines
   },
   solidLine: {
     width: LINE_WIDTH,

@@ -140,7 +140,7 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
               styles.manchuScript,
               {
                 fontSize: fontSize * 0.8,
-                right: size * -0.07,
+                right: size * -0.1,
                 transform: [{ rotate: '90deg' }],
               }
             ]}>

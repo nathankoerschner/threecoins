@@ -1,5 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, TextInput, Dimensions, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  Easing,
+  runOnJS,
+} from 'react-native-reanimated';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -8,6 +16,7 @@ import { useHaptics } from '@/hooks/useHaptics';
 import { HexagramStack } from '@/components/hexagram/HexagramStack';
 import { AnimatedCoinSet } from '@/components/coins/AnimatedCoinSet';
 import { PullToCast } from '@/components/casting/PullToCast';
+import { SwipeableTopArea } from '@/components/casting/SwipeableTopArea';
 import { colors, typography, spacing } from '@/theme';
 import { PullDirection } from '@/types';
 
@@ -25,16 +34,75 @@ const CastingScreen: React.FC = () => {
   const [visibleLineCount, setVisibleLineCount] = useState(0); // Number of lines to show in hexagram
   const [animationCompleteCallback, setAnimationCompleteCallback] = useState<(() => void) | null>(null);
   const [isAnimating, setIsAnimating] = useState(false); // Track if any animation is in progress
+  const [isRepositioning, setIsRepositioning] = useState(false); // Track if coins are repositioning after first cast
+  const [question, setQuestion] = useState(''); // User's question for the I Ching reading
+  const [activeView, setActiveView] = useState<'question' | 'hexagram'>('question'); // Track which view is active
+  const screenWidth = Dimensions.get('window').width; // Get screen width for translation
+  const carouselTranslateX = useSharedValue(0); // Animated translateX for carousel
+  const hasNavigatedToReading = useRef(false); // Track if we've already navigated to reading screen
+  const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track navigation timeout
+
+  // Glow animation for hexagram box when complete
+  const glowOpacity = useSharedValue(0);
+
+  // Trigger glow animation when casting completes
+  useEffect(() => {
+    if (isComplete) {
+      glowOpacity.value = withRepeat(
+        withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+    } else {
+      glowOpacity.value = 0;
+    }
+  }, [isComplete]);
+
+  const hexagramCardAnimatedStyle = useAnimatedStyle(() => ({
+    shadowColor: colors.accent.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: glowOpacity.value * 0.6,
+    shadowRadius: 12 + glowOpacity.value * 8,
+    elevation: glowOpacity.value * 12,
+  }));
+
+  const carouselAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: carouselTranslateX.value }],
+  }));
+
+  // Animated opacity for View Reading button
+  const viewReadingButtonOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visibleLineCount === 6 && reading) {
+      viewReadingButtonOpacity.value = withTiming(1, { duration: 400 });
+    } else {
+      viewReadingButtonOpacity.value = 0;
+    }
+  }, [visibleLineCount, reading]);
+
+  const viewReadingButtonAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: viewReadingButtonOpacity.value,
+  }));
 
   // Navigate to Reading screen when casting is complete
   useEffect(() => {
-    if (isComplete && reading) {
+    if (isComplete && reading && !hasNavigatedToReading.current) {
       // Wait for final line to fully draw before navigating
       // Coins animate (max 1700ms) + delay (100ms) + line drawing (400ms) + buffer (300ms)
-      setTimeout(() => {
+      navigationTimeoutRef.current = setTimeout(() => {
+        hasNavigatedToReading.current = true;
         navigation.navigate('Reading', { reading });
       }, 2500);
     }
+
+    // Cleanup timeout on unmount or when dependencies change
+    return () => {
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+        navigationTimeoutRef.current = null;
+      }
+    };
   }, [isComplete, reading, navigation]);
 
   // Trigger animation after throwCoins completes (lines array updates)
@@ -54,6 +122,15 @@ const CastingScreen: React.FC = () => {
       // Store the callback
       setAnimationCompleteCallback(() => callback);
 
+      // If viewing question page when cast is initiated, slide to hexagram
+      if (activeView === 'question') {
+        setActiveView('hexagram');
+        carouselTranslateX.value = withTiming(-screenWidth, {
+          duration: 300,
+          easing: Easing.out(Easing.ease),
+        });
+      }
+
       // Data is ready, now trigger animation
       setIsThrowingCoins(false);
       setShouldAnimate(true);
@@ -66,7 +143,7 @@ const CastingScreen: React.FC = () => {
         triggerStaggeredCoinLandings(3, 150); // 3 coins, 150ms apart
       }, 1000);
     }
-  }, [lines.length, isThrowingCoins, triggerStaggeredCoinLandings]);
+  }, [lines.length, isThrowingCoins, triggerStaggeredCoinLandings, screenWidth, activeView]);
 
   // Auto-reset shouldAnimate after animation duration
   useEffect(() => {
@@ -109,13 +186,19 @@ const CastingScreen: React.FC = () => {
       triggerHaptic('castingComplete');
     }
 
-    // Call the stored callback which has the correct line count captured
+    // Show hexagram and line after animation completes
     if (animationCompleteCallback) {
       animationCompleteCallback();
     }
   };
 
   const handleReset = () => {
+    // Clear any pending navigation timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current);
+      navigationTimeoutRef.current = null;
+    }
+
     // Reset all animation states first
     setShouldAnimate(false);
     setIsThrowingCoins(false);
@@ -125,6 +208,18 @@ const CastingScreen: React.FC = () => {
     setVisibleLineCount(0);
     setAnimationCompleteCallback(null);
     setIsAnimating(false);
+    setIsRepositioning(false);
+
+    // Reset carousel to question view
+    setActiveView('question');
+    carouselTranslateX.value = 0;
+
+    // Reset question field
+    setQuestion('');
+
+    // Reset navigation flag
+    hasNavigatedToReading.current = false;
+
     // Then reset casting data
     resetCasting();
   };
@@ -146,10 +241,32 @@ const CastingScreen: React.FC = () => {
     }
   };
 
+  const handleCarouselSwipe = (direction: 'left' | 'right') => {
+    // Only allow swipe if we have cast at least once
+    if (lines.length === 0) return;
+
+    if (direction === 'left' && activeView === 'hexagram') {
+      // Swipe left: Show question (translateX: 0)
+      setActiveView('question');
+      carouselTranslateX.value = withTiming(0, {
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+      });
+    } else if (direction === 'right' && activeView === 'question') {
+      // Swipe right: Show hexagram (translateX: -screenWidth)
+      setActiveView('hexagram');
+      carouselTranslateX.value = withTiming(-screenWidth, {
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+      });
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Reset button in top left */}
-      {lines.length > 0 && (
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        {/* Reset button in top left */}
+        {lines.length > 0 && (
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.resetButtonTop}
@@ -160,36 +277,92 @@ const CastingScreen: React.FC = () => {
         </View>
       )}
 
-      {/* Display cast lines as hexagram */}
-      {visibleLineCount > 0 && (
-        <View style={styles.hexagramContainer}>
-          <View style={styles.hexagramCard}>
-            <HexagramStack
-              lines={lines.slice(0, visibleLineCount)}
-              animated={true}
-              showChangingIndicators={true}
+      {/* Swipeable Top Content Area */}
+      <View style={styles.carouselWrapper}>
+        <SwipeableTopArea
+          onSwipeLeft={() => handleCarouselSwipe('left')}
+          onSwipeRight={() => handleCarouselSwipe('right')}
+          isDisabled={lines.length === 0 || isAnimating}
+          currentTranslateX={carouselTranslateX}
+        >
+          <Animated.View style={[styles.carouselContainer, carouselAnimatedStyle]}>
+          {/* Screen 0: Question View */}
+          <View style={[styles.carouselScreen, { width: screenWidth }]}>
+            <View style={styles.questionSection}>
+              <Text style={styles.questionPrompt}>Think of your question</Text>
+              <TextInput
+                style={styles.questionInput}
+                placeholder="Enter your question here..."
+                placeholderTextColor={colors.text.muted}
+                value={question}
+                onChangeText={setQuestion}
+                multiline
+                numberOfLines={3}
+                maxLength={200}
+                editable={activeView === 'question'} // Only editable when visible
+              />
+              <Text style={styles.instructionText}>
+                {lines.length === 0
+                  ? 'Then swipe on the coins to start casting'
+                  : 'Swipe to see hexagram →'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Screen 1: Hexagram View */}
+          <View style={[styles.carouselScreen, { width: screenWidth }]}>
+            {visibleLineCount > 0 && (
+              <View style={styles.hexagramContainer}>
+                <Animated.View style={[styles.hexagramCard, hexagramCardAnimatedStyle]}>
+                  <HexagramStack
+                    lines={lines.slice(0, visibleLineCount)}
+                    animated={true}
+                    showChangingIndicators={true}
+                  />
+                </Animated.View>
+                <Animated.View style={[styles.viewReadingButtonContainer, viewReadingButtonAnimatedStyle]}>
+                  <TouchableOpacity
+                    style={styles.viewReadingButton}
+                    onPress={() => {
+                      if (visibleLineCount === 6 && reading) {
+                        hasNavigatedToReading.current = true;
+                        navigation.navigate('Reading', { reading });
+                      }
+                    }}
+                    disabled={visibleLineCount !== 6 || !reading}
+                  >
+                    <Text style={styles.viewReadingButtonText}>View Reading</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              </View>
+            )}
+          </View>
+          </Animated.View>
+        </SwipeableTopArea>
+      </View>
+
+      {/* Flexible spacer to fill remaining space above coins */}
+      <View style={styles.flexibleSpacer} />
+
+      {/* Absolutely positioned coins container - fixed to bottom */}
+      <View style={styles.absoluteCoinsContainer}>
+        <PullToCast
+          onRelease={handleThrowCoins}
+          isDisabled={shouldAnimate || isThrowingCoins || isComplete}
+        >
+          <View style={styles.coinDisplay}>
+            <AnimatedCoinSet
+              key={animationKey} // Force re-mount for same coin values
+              coins={lines.length > 0 ? lines[lines.length - 1].coins : [true, false, true]}
+              size={100}
+              shouldAnimate={shouldAnimate}
+              initialY={pullDistance}
+              pullDirection={pullDirection}
+              onAnimationComplete={handleAnimationComplete}
             />
           </View>
-        </View>
-      )}
-
-      {/* Pull-to-cast gesture area */}
-      <PullToCast
-        onRelease={handleThrowCoins}
-        isDisabled={shouldAnimate || isThrowingCoins || isComplete}
-      >
-        <View style={styles.coinDisplay}>
-          <AnimatedCoinSet
-            key={animationKey} // Force re-mount for same coin values
-            coins={lines.length > 0 ? lines[lines.length - 1].coins : [true, false, true]}
-            size={100}
-            shouldAnimate={shouldAnimate}
-            initialY={pullDistance}
-            pullDirection={pullDirection}
-            onAnimationComplete={handleAnimationComplete}
-          />
-        </View>
-      </PullToCast>
+        </PullToCast>
+      </View>
 
       {/* Tap-to-skip overlay - only visible during animation */}
       {(isAnimating || shouldAnimate) && (
@@ -198,7 +371,8 @@ const CastingScreen: React.FC = () => {
           onPress={handleSkipAnimation}
         />
       )}
-    </View>
+      </View>
+    </TouchableWithoutFeedback>
   );
 };
 
@@ -208,11 +382,39 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background.primary,
     paddingTop: 80,
     paddingHorizontal: spacing.lg,
+    position: 'relative',  // Create positioning context for absolute children
+  },
+  flexibleSpacer: {
+    flex: 1,  // Fills available space between top content and absolute coins
+    minHeight: 40,  // Minimum gap between content and coins
+  },
+  absoluteCoinsContainer: {
+    position: 'absolute',
+    bottom: 100,             // Fixed distance from bottom for consistent positioning
+    left: 0,
+    right: 0,
+    height: 300,             // Fixed height for gesture area + coins
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,              // Above other content
+    pointerEvents: 'box-none',  // Allow touches to pass to gesture detector
+  },
+  carouselWrapper: {
+    marginHorizontal: -spacing.lg, // Break out of parent's horizontal padding
+  },
+  carouselContainer: {
+    flexDirection: 'row',
+    width: Dimensions.get('window').width * 2,  // Two screens wide
+  },
+  carouselScreen: {
+    // Width set dynamically in JSX
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   topBar: {
     position: 'absolute',
     top: 60,
-    left: spacing.lg,
+    right: spacing.lg,
     zIndex: 100,
   },
   resetButtonTop: {
@@ -274,6 +476,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+  viewReadingButtonContainer: {
+    marginTop: spacing.lg,
+  },
+  viewReadingButton: {
+    backgroundColor: colors.accent.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: 8,
+    shadowColor: colors.accent.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  viewReadingButtonText: {
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.background.primary,
+    textAlign: 'center',
+  },
+  questionSection: {
+    alignItems: 'center',
+    marginBottom: spacing.xl,
+    width: '90%',
+    maxWidth: 400,
+  },
+  questionPrompt: {
+    fontSize: typography.fontSize.xl,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.text.primary,
+    marginBottom: spacing.lg,
+    textAlign: 'center',
+  },
+  questionInput: {
+    width: '100%',
+    minHeight: 80,
+    backgroundColor: colors.background.secondary,
+    borderRadius: 12,
+    padding: spacing.md,
+    fontSize: typography.fontSize.md,
+    color: colors.text.primary,
+    textAlignVertical: 'top',
+    borderWidth: 1,
+    borderColor: colors.line.yin,
+  },
+  instructionText: {
+    fontSize: typography.fontSize.md,
+    color: colors.text.secondary,
+    textAlign: 'center',
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
+    fontStyle: 'italic',
   },
   skipOverlay: {
     position: 'absolute',

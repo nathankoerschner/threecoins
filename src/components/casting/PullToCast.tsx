@@ -30,17 +30,23 @@ export const PullToCast: React.FC<PullToCastProps> = ({
   children,
 }) => {
   const translateY = useSharedValue(0);
+  const translateX = useSharedValue(0); // Horizontal translation
   const pullProgress = useSharedValue(0); // 0 to 1 progress toward threshold (pull down)
   const pullProgressUp = useSharedValue(0); // 0 to 1 progress toward threshold (pull up)
-  const pullDirection = useSharedValue<'up' | 'down' | 'none'>('none'); // Direction lock
+  const pullProgressLeft = useSharedValue(0); // 0 to 1 progress toward threshold (pull left)
+  const pullProgressRight = useSharedValue(0); // 0 to 1 progress toward threshold (pull right)
+  const pullDirection = useSharedValue<PullDirection | 'none'>('none'); // Direction lock
 
   // Reset position when disabled state changes
   useEffect(() => {
     if (isDisabled) {
       // Instant reset (no animation) so it doesn't interfere with coin animation
       translateY.value = 0;
+      translateX.value = 0;
       pullProgress.value = 0;
       pullProgressUp.value = 0;
+      pullProgressLeft.value = 0;
+      pullProgressRight.value = 0;
       pullDirection.value = 'none';
     }
   }, [isDisabled]);
@@ -53,9 +59,22 @@ export const PullToCast: React.FC<PullToCastProps> = ({
       pullDirection.value = 'none';
     })
     .onUpdate((event) => {
-      // Lock direction on first movement (if not already locked)
-      if (pullDirection.value === 'none' && Math.abs(event.translationY) > 0) {
-        pullDirection.value = event.translationY > 0 ? 'down' : 'up';
+      // Lock direction on first significant movement (5px threshold to avoid jitter)
+      if (pullDirection.value === 'none') {
+        const absX = Math.abs(event.translationX);
+        const absY = Math.abs(event.translationY);
+
+        // Only lock if movement exceeds 5px threshold
+        if (absX > 5 || absY > 5) {
+          // Lock to dominant axis
+          if (absX > absY) {
+            // Horizontal movement dominant
+            pullDirection.value = event.translationX > 0 ? 'right' : 'left';
+          } else {
+            // Vertical movement dominant
+            pullDirection.value = event.translationY > 0 ? 'down' : 'up';
+          }
+        }
       }
 
       const currentDirection = pullDirection.value;
@@ -69,7 +88,9 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         translateY.value = Math.min(dampedTranslation, MAX_PULL);
         // Use ACTUAL translation for progress, not damped
         pullProgress.value = Math.min(event.translationY / PULL_THRESHOLD, 1);
-        pullProgressUp.value = 0; // Reset up progress
+        pullProgressUp.value = 0; // Reset other progress values
+        pullProgressLeft.value = 0;
+        pullProgressRight.value = 0;
       }
       // Handle pull UP
       else if (currentDirection === 'up' && event.translationY < 0) {
@@ -82,7 +103,30 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         translateY.value = -Math.min(dampedTranslation, MAX_PULL);
         // Use ACTUAL translation for progress, not damped
         pullProgressUp.value = Math.min(absTranslation / PULL_THRESHOLD, 1);
-        pullProgress.value = 0; // Reset down progress
+        pullProgress.value = 0; // Reset other progress values
+        pullProgressLeft.value = 0;
+        pullProgressRight.value = 0;
+      }
+      // Handle pull RIGHT (no horizontal movement, just track progress)
+      else if (currentDirection === 'right' && event.translationX > 0) {
+        // Don't move the coins horizontally - keep them locked in place
+        translateX.value = 0;
+        // Track progress for threshold detection
+        pullProgressRight.value = Math.min(event.translationX / PULL_THRESHOLD, 1);
+        pullProgress.value = 0;
+        pullProgressUp.value = 0;
+        pullProgressLeft.value = 0;
+      }
+      // Handle pull LEFT (no horizontal movement, just track progress)
+      else if (currentDirection === 'left' && event.translationX < 0) {
+        const absTranslation = Math.abs(event.translationX);
+        // Don't move the coins horizontally - keep them locked in place
+        translateX.value = 0;
+        // Track progress for threshold detection
+        pullProgressLeft.value = Math.min(absTranslation / PULL_THRESHOLD, 1);
+        pullProgress.value = 0;
+        pullProgressUp.value = 0;
+        pullProgressRight.value = 0;
       }
     })
     .onEnd((event) => {
@@ -111,14 +155,37 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         runOnJS(onRelease)(-actualVisualDistance, 'up');
         // Don't animate back here - the useEffect will handle instant reset
       }
+      // Check if threshold was met for pull RIGHT
+      else if (currentDirection === 'right' && event.translationX >= PULL_THRESHOLD && !isDisabled) {
+        const rubberBandFactor = 1 - (event.translationX / MAX_PULL) * 0.5;
+        const dampedTranslation = event.translationX * Math.max(0.3, rubberBandFactor);
+        const actualVisualDistance = Math.min(dampedTranslation, MAX_PULL);
+
+        runOnJS(onRelease)(actualVisualDistance, 'right');
+      }
+      // Check if threshold was met for pull LEFT
+      else if (currentDirection === 'left' && Math.abs(event.translationX) >= PULL_THRESHOLD && !isDisabled) {
+        const absTranslation = Math.abs(event.translationX);
+        const rubberBandFactor = 1 - (absTranslation / MAX_PULL) * 0.5;
+        const dampedTranslation = absTranslation * Math.max(0.3, rubberBandFactor);
+        const actualVisualDistance = Math.min(dampedTranslation, MAX_PULL);
+
+        runOnJS(onRelease)(-actualVisualDistance, 'left');
+      }
       // Snap back if threshold not met
       else {
         translateY.value = withTiming(0, {
           duration: 400,
           easing: Easing.out(Easing.ease),
         });
+        translateX.value = withTiming(0, {
+          duration: 400,
+          easing: Easing.out(Easing.ease),
+        });
         pullProgress.value = withTiming(0, { duration: 400 });
         pullProgressUp.value = withTiming(0, { duration: 400 });
+        pullProgressLeft.value = withTiming(0, { duration: 400 });
+        pullProgressRight.value = withTiming(0, { duration: 400 });
       }
 
       // Reset direction lock
@@ -126,7 +193,10 @@ export const PullToCast: React.FC<PullToCastProps> = ({
     });
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
+    transform: [
+      { translateY: translateY.value },
+      { translateX: translateX.value },
+    ],
   }));
 
   // Top indicator (pull down)
@@ -171,29 +241,24 @@ export const PullToCast: React.FC<PullToCastProps> = ({
     ],
   }));
 
-  // Tap gesture disabled for now
-  // const tapGesture = Gesture.Tap()
-  //   .enabled(!isDisabled)
-  //   .maxDuration(150)
-  //   .maxDistance(10)
-  //   .onEnd(() => {
-  //     runOnJS(onRelease)(0, 'down');
-  //   });
+  // Tap gesture - for quick casting without pull
+  const tapGesture = Gesture.Tap()
+    .enabled(!isDisabled)
+    .maxDuration(150)    // Must complete within 150ms
+    .maxDistance(10)     // Max 10px movement tolerance
+    .onEnd(() => {
+      runOnJS(onRelease)(0, 'down');
+    });
 
-  // Use only pan gesture (tap-to-flip disabled)
-  const composedGesture = panGesture;
+  // Compose gestures: Tap wins if activated first (quick tap),
+  // Pan wins if movement exceeds tap threshold
+  const composedGesture = Gesture.Race(tapGesture, panGesture);
 
   return (
     <GestureDetector gesture={composedGesture}>
       <Animated.View style={[styles.container, animatedContainerStyle]}>
-        {/* Top progress indicator (pull down) */}
-        <Animated.View style={[styles.progressIndicatorTop, animatedIndicatorStyle]} />
-
         {/* Content (coin set) */}
         <View style={styles.contentContainer}>{children}</View>
-
-        {/* Bottom progress indicator (pull up) */}
-        <Animated.View style={[styles.progressIndicatorBottom, animatedBottomIndicatorStyle]} />
       </Animated.View>
     </GestureDetector>
   );
@@ -201,10 +266,10 @@ export const PullToCast: React.FC<PullToCastProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    height: 300,              // Fixed height instead of flex: 1
+    width: '100%',            // Full width
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 120,
+    justifyContent: 'center', // Center instead of flex-start
   },
   progressIndicatorTop: {
     position: 'absolute',

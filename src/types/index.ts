@@ -2,7 +2,7 @@
 export type LineType = 'old_yin' | 'young_yang' | 'young_yin' | 'old_yang';
 
 // Pull direction for coin casting gesture
-export type PullDirection = 'up' | 'down';
+export type PullDirection = 'up' | 'down' | 'left' | 'right';
 
 // Represents a single line cast with coin toss results
 export interface CastLine {

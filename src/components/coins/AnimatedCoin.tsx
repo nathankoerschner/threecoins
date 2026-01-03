@@ -7,6 +7,7 @@ import Animated, {
   withSpring,
   withSequence,
   withDelay,
+  withRepeat,
   Easing,
   runOnJS,
   useDerivedValue,
@@ -39,19 +40,25 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
   // Initialize shared values based on whether we're animating from a pulled position
   // For both up and down pulls, use the actual initialY value if it exists
   const startY = initialY !== 0 ? initialY : 0;
-  const rotationX = useSharedValue(0); // Forward flip
+  const rotationX = useSharedValue(0); // Forward flip (vertical gestures)
+  const rotationY = useSharedValue(0); // Side flip (horizontal gestures)
   const rotationZ = useSharedValue(0); // Spin (makes square hole rotate)
   const translateY = useSharedValue(startY);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
+  const idleBobbingY = useSharedValue(0); // Separate value for idle bobbing animation
 
   // Track which side is currently visible based on rotation
   const [displayHeads, setDisplayHeads] = useState(isHeads);
 
   // Derived value to determine which side should be visible
   useDerivedValue(() => {
+    // Use active rotation axis based on gesture direction
+    const isHorizontalGesture = pullDirection === 'left' || pullDirection === 'right';
+    const activeRotation = isHorizontalGesture ? rotationY.value : rotationX.value;
+
     // Normalize rotation to 0-360 range
-    const normalizedRotation = ((rotationX.value % 360) + 360) % 360;
+    const normalizedRotation = ((activeRotation % 360) + 360) % 360;
 
     // Determine if we should show the opposite side
     // When rotation is between 90-270 degrees, show opposite side
@@ -70,8 +77,31 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
       translateY.value = 0;
       scale.value = 1;
       opacity.value = 1;
+
+      // Start dramatic bobbing animation for idle state with independent timing
+      // First, smoothly reset to zero to avoid jumpiness
+      idleBobbingY.value = withTiming(0, { duration: 300 });
+
+      // After reset completes, start bobbing with randomized parameters
+      setTimeout(() => {
+        const bobbingAmplitude = 8 + Math.random() * 4; // 8-12px range (more dramatic)
+        const bobbingDuration = 1800 + Math.random() * 800; // 1800-2600ms
+
+        // Start from 0 and bob to amplitude (creates smooth start)
+        idleBobbingY.value = withRepeat(
+          withTiming(bobbingAmplitude, {
+            duration: bobbingDuration,
+            easing: Easing.inOut(Easing.sin), // Smooth sinusoidal motion
+          }),
+          -1,  // Infinite repeat
+          true // Reverse creates smooth up-down motion
+        );
+      }, 350); // Start bobbing after reset completes
       return;
     }
+
+    // Stop idle bobbing when casting animation starts
+    idleBobbingY.value = withTiming(0, { duration: 200 });
 
     // Start from pulled position (or default based on direction if no pull)
     const startY = initialY !== 0 ? initialY : (pullDirection === 'up' ? -100 : -100);
@@ -90,32 +120,33 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
         opacity.value = withTiming(1, { duration: 100 });
       }
 
-      // Rotation animation - multiple 360° spins (forward flip)
-      // Random direction (50% chance of clockwise vs counterclockwise)
-      const directionX = Math.random() > 0.5 ? 1 : -1;
-      const totalRotationX = config.rotations * 360 * directionX;
-      rotationX.value = withTiming(totalRotationX, {
-        duration: config.duration,
-        easing: Easing.out(Easing.cubic),
-      });
+      // Determine animation axis based on pull direction
+      const isHorizontalGesture = pullDirection === 'left' || pullDirection === 'right';
 
-      // Z-axis spin animation (makes square hole rotate randomly)
-      // Spin from current angle to add more rotation
-      // Random direction for Z-axis spin
-      const directionZ = Math.random() > 0.5 ? 1 : -1;
-      const randomZSpins = 2 + Math.random() * 3; // 2-5 spins
-      const additionalRotationZ = randomZSpins * 360 * directionZ;
-      const currentZ = rotationZ.value;
-      rotationZ.value = withTiming(currentZ + additionalRotationZ, {
-        duration: config.duration,
-        easing: Easing.out(Easing.cubic),
-      });
+      if (isHorizontalGesture) {
+        // HORIZONTAL SWIPE: Use Y-axis rotation (flip around vertical axis)
+        const directionY = Math.random() > 0.5 ? 1 : -1;
+        const totalRotationY = config.rotations * 360 * directionY;
+        rotationY.value = withTiming(totalRotationY, {
+          duration: config.duration,
+          easing: Easing.out(Easing.cubic),
+        });
 
-      // Vertical movement animation - direction-dependent
-      if (initialY === 0) {
-        // TAP: No vertical movement, just spin in place
-        // Set up a timer to call completion callback after rotation finishes
-        translateY.value = 0; // Stay in place
+        // Keep X-axis at 0 for horizontal gestures
+        rotationX.value = 0;
+
+        // Z-axis spin (same as vertical)
+        const directionZ = Math.random() > 0.5 ? 1 : -1;
+        const randomZSpins = 2 + Math.random() * 3; // 2-5 spins
+        const additionalRotationZ = randomZSpins * 360 * directionZ;
+        const currentZ = rotationZ.value;
+        rotationZ.value = withTiming(currentZ + additionalRotationZ, {
+          duration: config.duration,
+          easing: Easing.out(Easing.cubic),
+        });
+
+        // NO vertical movement for horizontal swipes (flip in place)
+        translateY.value = 0;
 
         // Call completion callback after animation duration
         setTimeout(() => {
@@ -123,64 +154,102 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
             onAnimationComplete();
           }
         }, config.duration);
-      } else if (pullDirection === 'down') {
-        // Pull DOWN: Drop with momentum, overshoot, then bounce back (mirrored physics)
-        // Calculate overshoot distance (drop 33% further than center due to momentum)
-        const overshootDistance = Math.abs(startY) * 0.33;
-        const overshootY = overshootDistance;
-
-        translateY.value = withSequence(
-          // Phase 1: Drop down past center (momentum from pull)
-          withTiming(overshootY, {
-            duration: config.duration * 0.45,
-            easing: Easing.in(Easing.cubic),
-          }),
-          // Phase 2: Spring back up toward center (elasticity)
-          withTiming(0, {
-            duration: config.duration * 0.25,
-            easing: Easing.out(Easing.quad),
-          }),
-          // Phase 3: Final bounce settle
-          withSpring(0, {
-            damping: 8,
-            stiffness: 150,
-            mass: 0.5,
-          }, () => {
-            // Animation complete callback on UI thread
-            if (onAnimationComplete) {
-              runOnJS(onAnimationComplete)();
-            }
-          })
-        );
       } else {
-        // Pull UP: Rise up, fall down, then bounce (mirrored animation)
-        // Calculate peak height (rise 33% higher than start)
-        const throwUpDistance = Math.abs(startY) * 0.33;
-        const peakY = -Math.abs(startY) - throwUpDistance;
+        // VERTICAL SWIPE OR TAP: Use X-axis rotation (forward flip)
+        // Random direction (50% chance of clockwise vs counterclockwise)
+        const directionX = Math.random() > 0.5 ? 1 : -1;
+        const totalRotationX = config.rotations * 360 * directionX;
+        rotationX.value = withTiming(totalRotationX, {
+          duration: config.duration,
+          easing: Easing.out(Easing.cubic),
+        });
 
-        translateY.value = withSequence(
-          // Phase 1: Rise up (momentum from pull)
-          withTiming(peakY, {
-            duration: config.duration * 0.25,
-            easing: Easing.out(Easing.quad),
-          }),
-          // Phase 2: Fall down (gravity)
-          withTiming(0, {
-            duration: config.duration * 0.45,
-            easing: Easing.in(Easing.cubic),
-          }),
-          // Phase 3: Bounce (same as down)
-          withSpring(0, {
-            damping: 8,
-            stiffness: 150,
-            mass: 0.5,
-          }, () => {
-            // Animation complete callback on UI thread
+        // Keep Y-axis at 0 for vertical gestures
+        rotationY.value = 0;
+
+        // Z-axis spin animation (makes square hole rotate randomly)
+        // Spin from current angle to add more rotation
+        // Random direction for Z-axis spin
+        const directionZ = Math.random() > 0.5 ? 1 : -1;
+        const randomZSpins = 2 + Math.random() * 3; // 2-5 spins
+        const additionalRotationZ = randomZSpins * 360 * directionZ;
+        const currentZ = rotationZ.value;
+        rotationZ.value = withTiming(currentZ + additionalRotationZ, {
+          duration: config.duration,
+          easing: Easing.out(Easing.cubic),
+        });
+
+        // Vertical movement animation - direction-dependent
+        if (initialY === 0) {
+          // TAP: No vertical movement, just spin in place
+          // Set up a timer to call completion callback after rotation finishes
+          translateY.value = 0; // Stay in place
+
+          // Call completion callback after animation duration
+          setTimeout(() => {
             if (onAnimationComplete) {
-              runOnJS(onAnimationComplete)();
+              onAnimationComplete();
             }
-          })
-        );
+          }, config.duration);
+        } else if (pullDirection === 'down') {
+          // Pull DOWN: Drop with momentum, overshoot, then bounce back (mirrored physics)
+          // Calculate overshoot distance (drop 33% further than center due to momentum)
+          const overshootDistance = Math.abs(startY) * 0.33;
+          const overshootY = overshootDistance;
+
+          translateY.value = withSequence(
+            // Phase 1: Drop down past center (momentum from pull)
+            withTiming(overshootY, {
+              duration: config.duration * 0.45,
+              easing: Easing.in(Easing.cubic),
+            }),
+            // Phase 2: Spring back up toward center (elasticity)
+            withTiming(0, {
+              duration: config.duration * 0.25,
+              easing: Easing.out(Easing.quad),
+            }),
+            // Phase 3: Final bounce settle
+            withSpring(0, {
+              damping: 8,
+              stiffness: 150,
+              mass: 0.5,
+            }, () => {
+              // Animation complete callback on UI thread
+              if (onAnimationComplete) {
+                runOnJS(onAnimationComplete)();
+              }
+            })
+          );
+        } else {
+          // Pull UP: Rise up, fall down, then bounce (mirrored animation)
+          // Calculate peak height (rise 33% higher than start)
+          const throwUpDistance = Math.abs(startY) * 0.33;
+          const peakY = -Math.abs(startY) - throwUpDistance;
+
+          translateY.value = withSequence(
+            // Phase 1: Rise up (momentum from pull)
+            withTiming(peakY, {
+              duration: config.duration * 0.25,
+              easing: Easing.out(Easing.quad),
+            }),
+            // Phase 2: Fall down (gravity)
+            withTiming(0, {
+              duration: config.duration * 0.45,
+              easing: Easing.in(Easing.cubic),
+            }),
+            // Phase 3: Bounce (same as down)
+            withSpring(0, {
+              damping: 8,
+              stiffness: 150,
+              mass: 0.5,
+            }, () => {
+              // Animation complete callback on UI thread
+              if (onAnimationComplete) {
+                runOnJS(onAnimationComplete)();
+              }
+            })
+          );
+        }
       }
     };
 
@@ -193,8 +262,9 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
     opacity: opacity.value,
     transform: [
       { perspective: 1000 }, // Add perspective FIRST for 3D effect
-      { translateY: translateY.value },
-      { rotateX: `${rotationX.value}deg` }, // 3D flip around horizontal axis
+      { translateY: translateY.value + idleBobbingY.value }, // Combine casting animation with idle bobbing
+      { rotateX: `${rotationX.value}deg` }, // 3D flip around horizontal axis (vertical gestures)
+      { rotateY: `${rotationY.value}deg` }, // 3D flip around vertical axis (horizontal gestures)
       { rotateZ: `${rotationZ.value}deg` }, // Spin in the plane (rotates square hole)
       { scale: scale.value },
     ],

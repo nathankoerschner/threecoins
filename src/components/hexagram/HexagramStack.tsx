@@ -76,6 +76,8 @@ function hexagramToLines(hexagram: Hexagram): CastLine[] {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    justifyContent: 'flex-end', // Align lines to bottom
+    minHeight: 180, // Ensure space for all 6 lines
     paddingVertical: 16,
   },
   lineWrapper: {
