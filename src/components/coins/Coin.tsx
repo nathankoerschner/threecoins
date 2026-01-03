@@ -11,7 +11,7 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
   const coinSize = size;
   const holeSize = size * 0.35;
   const borderWidth = size * 0.06;
-  const fontSize = size * 0.25; // Scale inscription with coin size
+  const fontSize = size * 0.20; // Larger to fill space between border and hole
 
   return (
     <View
@@ -21,12 +21,59 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
           width: coinSize,
           height: coinSize,
           borderRadius: coinSize / 2,
-          backgroundColor: colors.accent.primary, // Always gold
+          backgroundColor: colors.accent.primary, // Base gold color
           borderWidth: borderWidth,
           borderColor: colors.accent.dark,
         },
       ]}
     >
+      {/* Radial gradient effect - darker edges */}
+      <View
+        style={[
+          styles.radialGradient,
+          {
+            width: coinSize - borderWidth * 2,
+            height: coinSize - borderWidth * 2,
+            borderRadius: (coinSize - borderWidth * 2) / 2,
+          },
+        ]}
+      />
+
+      {/* Metallic shine highlight (top-left) */}
+      <View
+        style={[
+          styles.highlight,
+          {
+            width: coinSize * 0.4,
+            height: coinSize * 0.4,
+            borderRadius: coinSize * 0.2,
+            top: coinSize * 0.15,
+            left: coinSize * 0.15,
+          },
+        ]}
+      />
+
+      {/* Secondary highlight (bottom-right, softer) */}
+      <View
+        style={[
+          styles.secondaryHighlight,
+          {
+            width: coinSize * 0.3,
+            height: coinSize * 0.3,
+            borderRadius: coinSize * 0.15,
+            bottom: coinSize * 0.15,
+            right: coinSize * 0.15,
+          },
+        ]}
+      />
+
+      {/* Brushed metal texture lines */}
+      <View style={[styles.textureOverlay, {
+        width: coinSize - borderWidth * 2,
+        height: coinSize - borderWidth * 2,
+        borderRadius: (coinSize - borderWidth * 2) / 2,
+      }]} />
+
       {/* Square hole in the middle (traditional Chinese coin design) */}
       <View
         style={[
@@ -35,20 +82,72 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
             width: holeSize,
             height: holeSize,
             backgroundColor: colors.background.primary,
+            borderWidth: holeSize * 0.04,
+            borderColor: 'rgba(0, 0, 0, 0.4)',
           },
         ]}
       />
 
-      {/* Inscriptions to differentiate heads/tails */}
+      {/* Hole inner shadow for depth */}
+      <View
+        style={[
+          styles.holeInnerShadow,
+          {
+            width: holeSize - holeSize * 0.08,
+            height: holeSize - holeSize * 0.08,
+          },
+        ]}
+      />
+
+      {/* Inscriptions - Yang side has 4 Chinese characters, Yin side has Manchu script */}
       <View style={styles.inscriptionContainer}>
-        {/* Top inscription */}
-        <Text style={[styles.inscription, { fontSize, top: size * 0.12 }]}>
-          {isHeads ? '陽' : '陰'}
-        </Text>
-        {/* Bottom inscription */}
-        <Text style={[styles.inscription, { fontSize, bottom: size * 0.12 }]}>
-          {isHeads ? '陽' : '陰'}
-        </Text>
+        {isHeads ? (
+          // YANG SIDE: Four Chinese characters around the square hole
+          <>
+            {/* Top: 乾 - positioned between top border and hole */}
+            <Text style={[styles.inscription, { fontSize, top: size * 0.03 }]}>
+              乾
+            </Text>
+            {/* Right: 隆 - positioned between right border and hole */}
+            <Text style={[styles.inscription, { fontSize, right: size * 0.05 }]}>
+              隆
+            </Text>
+            {/* Bottom: 通 - positioned between bottom border and hole */}
+            <Text style={[styles.inscription, { fontSize, bottom: size * 0.03 }]}>
+              通
+            </Text>
+            {/* Left: 寶 - positioned between left border and hole */}
+            <Text style={[styles.inscription, { fontSize, left: size * 0.05 }]}>
+              寶
+            </Text>
+          </>
+        ) : (
+          // YIN SIDE: Manchu script (rotated 90 degrees clockwise)
+          <>
+            {/* Left of hole: ᠪᠣᠣ (Boo) - rotated clockwise */}
+            <Text style={[
+              styles.manchuScript,
+              {
+                fontSize: fontSize * 0.9,
+                left: size * 0.03,
+                transform: [{ rotate: '90deg' }],
+              }
+            ]}>
+              ᠪᠣᠣ
+            </Text>
+            {/* Right of hole: ᠴᡳᠣᠸᠠᠨ (Ciowan) - rotated clockwise */}
+            <Text style={[
+              styles.manchuScript,
+              {
+                fontSize: fontSize * 0.8,
+                right: size * -0.07,
+                transform: [{ rotate: '90deg' }],
+              }
+            ]}>
+              ᠴᡳᠣᠸᠠᠨ
+            </Text>
+          </>
+        )}
       </View>
 
       {/* Inner shadow effect for depth */}
@@ -59,8 +158,25 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
             width: coinSize - borderWidth * 2,
             height: coinSize - borderWidth * 2,
             borderRadius: (coinSize - borderWidth * 2) / 2,
+            borderWidth: 1.5,
+            borderColor: 'rgba(0, 0, 0, 0.25)',
+          },
+        ]}
+      />
+
+      {/* Edge highlight for beveled effect */}
+      <View
+        style={[
+          styles.edgeHighlight,
+          {
+            width: coinSize - borderWidth * 2,
+            height: coinSize - borderWidth * 2,
+            borderRadius: (coinSize - borderWidth * 2) / 2,
             borderWidth: 1,
-            borderColor: 'rgba(0, 0, 0, 0.2)',
+            borderTopColor: 'rgba(255, 255, 255, 0.4)',
+            borderLeftColor: 'rgba(255, 255, 255, 0.3)',
+            borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+            borderRightColor: 'rgba(0, 0, 0, 0.1)',
           },
         ]}
       />
@@ -73,14 +189,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  radialGradient: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    zIndex: 0,
+  },
+  highlight: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    zIndex: 1,
+  },
+  secondaryHighlight: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    zIndex: 1,
+  },
+  textureOverlay: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 0.5,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    zIndex: 1,
   },
   hole: {
     position: 'absolute',
-    zIndex: 2,
+    zIndex: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+  },
+  holeInnerShadow: {
+    position: 'absolute',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    zIndex: 5,
   },
   inscriptionContainer: {
     position: 'absolute',
@@ -88,16 +235,35 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 3,
+    zIndex: 6,
   },
   inscription: {
     position: 'absolute',
-    color: '#000000',
+    color: '#6B5D3F', // Dark gold for raised embossed look
     fontWeight: 'bold',
-    opacity: 0.6,
+    opacity: 1,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 255, 255, 0.3)', // Light highlight for raised effect
+    textShadowOffset: { width: -0.5, height: -0.5 },
+    textShadowRadius: 0.5,
+  },
+  manchuScript: {
+    position: 'absolute',
+    color: '#6B5D3F', // Dark gold for raised embossed look
+    fontWeight: '600',
+    opacity: 1,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255, 255, 255, 0.3)', // Light highlight for raised effect
+    textShadowOffset: { width: -0.5, height: -0.5 },
+    textShadowRadius: 0.5,
+    writingDirection: 'ltr', // Manchu is vertical but rendered as is
   },
   innerShadow: {
     position: 'absolute',
-    zIndex: 1,
+    zIndex: 2,
+  },
+  edgeHighlight: {
+    position: 'absolute',
+    zIndex: 3,
   },
 });

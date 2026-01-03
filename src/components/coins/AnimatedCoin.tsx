@@ -106,14 +106,23 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
           }
         }, config.duration);
       } else if (pullDirection === 'down') {
-        // Pull DOWN: Drop and bounce animation
+        // Pull DOWN: Drop with momentum, overshoot, then bounce back (mirrored physics)
+        // Calculate overshoot distance (drop 33% further than center due to momentum)
+        const overshootDistance = Math.abs(startY) * 0.33;
+        const overshootY = overshootDistance;
+
         translateY.value = withSequence(
-          // Drop down
-          withTiming(0, {
-            duration: config.duration * 0.7,
-            easing: Easing.out(Easing.cubic),
+          // Phase 1: Drop down past center (momentum from pull)
+          withTiming(overshootY, {
+            duration: config.duration * 0.45,
+            easing: Easing.in(Easing.cubic),
           }),
-          // Bounce effect
+          // Phase 2: Spring back up toward center (elasticity)
+          withTiming(0, {
+            duration: config.duration * 0.25,
+            easing: Easing.out(Easing.quad),
+          }),
+          // Phase 3: Final bounce settle
           withSpring(0, {
             damping: 8,
             stiffness: 150,
