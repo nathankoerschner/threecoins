@@ -92,7 +92,7 @@ const CastingScreen: React.FC = () => {
       // Coins animate (max 1700ms) + delay (100ms) + line drawing (400ms) + buffer (300ms)
       navigationTimeoutRef.current = setTimeout(() => {
         hasNavigatedToReading.current = true;
-        navigation.navigate('Reading', { reading });
+        navigation.navigate('Reading', { reading, question });
       }, 2500);
     }
 
@@ -236,7 +236,7 @@ const CastingScreen: React.FC = () => {
 
       // If this is the final line, navigate immediately
       if (isComplete && reading) {
-        navigation.navigate('Reading', { reading });
+        navigation.navigate('Reading', { reading, question });
       }
     }
   };
@@ -326,7 +326,7 @@ const CastingScreen: React.FC = () => {
                     onPress={() => {
                       if (visibleLineCount === 6 && reading) {
                         hasNavigatedToReading.current = true;
-                        navigation.navigate('Reading', { reading });
+                        navigation.navigate('Reading', { reading, question });
                       }
                     }}
                     disabled={visibleLineCount !== 6 || !reading}

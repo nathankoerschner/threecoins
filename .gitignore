@@ -32,9 +32,15 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
 
 # typescript
 *.tsbuildinfo
+
+# Firebase
+functions/lib/
+functions/node_modules/
+.firebase/
 
 # generated native folders
 /ios

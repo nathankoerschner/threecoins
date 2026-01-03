@@ -6,6 +6,10 @@ export type RootStackParamList = {
   Casting: undefined;
   Reading: {
     reading: Reading;
+    question?: string;
+  };
+  Paywall: {
+    nextFreeReadingTime?: number;
   };
 };
 

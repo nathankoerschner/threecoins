@@ -6,6 +6,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { ReadingHeader } from '@/components/reading/ReadingHeader';
 import { TransformationIndicator } from '@/components/reading/TransformationIndicator';
 import { HexagramPair } from '@/components/reading/HexagramPair';
+import { AIInterpretation } from '@/components/reading/AIInterpretation';
 import { colors, typography, spacing } from '@/theme';
 
 type ReadingScreenRouteProp = RouteProp<RootStackParamList, 'Reading'>;
@@ -14,7 +15,7 @@ type ReadingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 const ReadingScreen: React.FC = () => {
   const navigation = useNavigation<ReadingScreenNavigationProp>();
   const route = useRoute<ReadingScreenRouteProp>();
-  const { reading } = route.params;
+  const { reading, question } = route.params;
 
   const hasChangingLines = reading.changingLines.length > 0;
 
@@ -48,13 +49,13 @@ const ReadingScreen: React.FC = () => {
             <TransformationIndicator changingLines={reading.changingLines} />
           )}
 
-          {/* Analysis section placeholder */}
-          <View style={styles.analysisSection}>
-            <Text style={styles.analysisSectionTitle}>Analysis</Text>
-            <Text style={styles.analysisPlaceholder}>
-              Interpretation text will be added in a future version
-            </Text>
-          </View>
+          {/* AI Interpretation */}
+          <AIInterpretation
+            primaryHexagram={reading.primary}
+            relatingHexagram={reading.transformed}
+            changingLines={reading.changingLines}
+            question={question}
+          />
         </ScrollView>
       </View>
   );
@@ -88,24 +89,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingTop: 60,
-  },
-  analysisSection: {
-    marginTop: spacing.xl,
-    marginBottom: spacing.xxl,
-  },
-  analysisSectionTitle: {
-    fontSize: typography.fontSize.xl,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.accent.primary,
-    marginBottom: spacing.md,
-  },
-  analysisPlaceholder: {
-    fontSize: typography.fontSize.md,
-    color: colors.text.muted,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    padding: spacing.xl,
-    paddingBottom: spacing.xxl,
   },
 });
 
