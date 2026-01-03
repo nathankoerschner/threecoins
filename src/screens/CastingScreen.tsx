@@ -160,16 +160,9 @@ const CastingScreen: React.FC = () => {
         </View>
       )}
 
-      <View style={styles.statusContainer}>
-        <Text style={styles.statusText}>
-          {isComplete ? 'Complete!' : `Line ${currentLineNumber} of 6`}
-        </Text>
-      </View>
-
       {/* Display cast lines as hexagram */}
       {visibleLineCount > 0 && (
         <View style={styles.hexagramContainer}>
-          <Text style={styles.hexagramLabel}>Building Your Hexagram</Text>
           <View style={styles.hexagramCard}>
             <HexagramStack
               lines={lines.slice(0, visibleLineCount)}
@@ -185,19 +178,17 @@ const CastingScreen: React.FC = () => {
         onRelease={handleThrowCoins}
         isDisabled={shouldAnimate || isThrowingCoins || isComplete}
       >
-        {lines.length > 0 && (
-          <View style={styles.coinDisplay}>
-            <AnimatedCoinSet
-              key={animationKey} // Force re-mount for same coin values
-              coins={lines[lines.length - 1].coins}
-              size={100}
-              shouldAnimate={shouldAnimate}
-              initialY={pullDistance}
-              pullDirection={pullDirection}
-              onAnimationComplete={handleAnimationComplete}
-            />
-          </View>
-        )}
+        <View style={styles.coinDisplay}>
+          <AnimatedCoinSet
+            key={animationKey} // Force re-mount for same coin values
+            coins={lines.length > 0 ? lines[lines.length - 1].coins : [true, false, true]}
+            size={100}
+            shouldAnimate={shouldAnimate}
+            initialY={pullDistance}
+            pullDirection={pullDirection}
+            onAnimationComplete={handleAnimationComplete}
+          />
+        </View>
       </PullToCast>
 
       {/* Tap-to-skip overlay - only visible during animation */}
@@ -264,7 +255,7 @@ const styles = StyleSheet.create({
     height: 240,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: spacing.lg,
+    marginTop: 20,
   },
   hexagramLabel: {
     fontSize: typography.fontSize.sm,

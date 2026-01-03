@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -9,6 +9,7 @@ import Animated, {
   withDelay,
   Easing,
   runOnJS,
+  useDerivedValue,
 } from 'react-native-reanimated';
 import { Coin } from './Coin';
 import { CoinAnimationConfig, DEFAULT_ANIMATION_CONFIG } from '@/hooks/useAnimations';
@@ -43,6 +44,23 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
   const translateY = useSharedValue(startY);
   const scale = useSharedValue(1);
   const opacity = useSharedValue(1);
+
+  // Track which side is currently visible based on rotation
+  const [displayHeads, setDisplayHeads] = useState(isHeads);
+
+  // Derived value to determine which side should be visible
+  useDerivedValue(() => {
+    // Normalize rotation to 0-360 range
+    const normalizedRotation = ((rotationX.value % 360) + 360) % 360;
+
+    // Determine if we should show the opposite side
+    // When rotation is between 90-270 degrees, show opposite side
+    const shouldShowOpposite = normalizedRotation > 90 && normalizedRotation < 270;
+    const newDisplayHeads = shouldShowOpposite ? !isHeads : isHeads;
+
+    // Update the display state on the JS thread
+    runOnJS(setDisplayHeads)(newDisplayHeads);
+  });
 
   useEffect(() => {
     if (!shouldAnimate) {
@@ -189,7 +207,7 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
       renderToHardwareTextureAndroid={true}
       pointerEvents="none"
     >
-      <Coin isHeads={isHeads} size={size} />
+      <Coin isHeads={displayHeads} size={size} />
     </Animated.View>
   );
 };
