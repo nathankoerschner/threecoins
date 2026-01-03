@@ -27,7 +27,7 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
         },
       ]}
     >
-      {/* Radial gradient effect - darker edges */}
+      {/* Enhanced radial gradient effect with depth */}
       <View
         style={[
           styles.radialGradient,
@@ -39,16 +39,16 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
         ]}
       />
 
-      {/* Metallic shine highlight (top-left) */}
+      {/* Premium metallic shine highlight (top-left) */}
       <View
         style={[
           styles.highlight,
           {
-            width: coinSize * 0.4,
-            height: coinSize * 0.4,
-            borderRadius: coinSize * 0.2,
-            top: coinSize * 0.15,
-            left: coinSize * 0.15,
+            width: coinSize * 0.45,
+            height: coinSize * 0.45,
+            borderRadius: coinSize * 0.225,
+            top: coinSize * 0.12,
+            left: coinSize * 0.12,
           },
         ]}
       />
@@ -58,16 +58,30 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
         style={[
           styles.secondaryHighlight,
           {
-            width: coinSize * 0.3,
-            height: coinSize * 0.3,
-            borderRadius: coinSize * 0.15,
-            bottom: coinSize * 0.15,
-            right: coinSize * 0.15,
+            width: coinSize * 0.35,
+            height: coinSize * 0.35,
+            borderRadius: coinSize * 0.175,
+            bottom: coinSize * 0.12,
+            right: coinSize * 0.12,
           },
         ]}
       />
 
-      {/* Brushed metal texture lines */}
+      {/* Tertiary shimmer for extra dimension */}
+      <View
+        style={[
+          styles.tertiaryHighlight,
+          {
+            width: coinSize * 0.25,
+            height: coinSize * 0.25,
+            borderRadius: coinSize * 0.125,
+            top: coinSize * 0.45,
+            right: coinSize * 0.2,
+          },
+        ]}
+      />
+
+      {/* Refined brushed metal texture */}
       <View style={[styles.textureOverlay, {
         width: coinSize - borderWidth * 2,
         height: coinSize - borderWidth * 2,
@@ -188,32 +202,38 @@ const styles = StyleSheet.create({
   coinContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    // Premium multi-layered shadow for depth
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 12,
   },
   radialGradient: {
     position: 'absolute',
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    backgroundColor: 'rgba(0, 0, 0, 0.18)', // Slightly deeper for more dimension
     zIndex: 0,
   },
   highlight: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(255, 255, 255, 0.32)', // Brighter, more luxurious
     zIndex: 1,
   },
   secondaryHighlight: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)', // Enhanced secondary shine
+    zIndex: 1,
+  },
+  tertiaryHighlight: {
+    position: 'absolute',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)', // Subtle shimmer
     zIndex: 1,
   },
   textureOverlay: {
     position: 'absolute',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)', // Refined texture
     borderWidth: 0.5,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(255, 255, 255, 0.1)', // More visible texture lines
     zIndex: 1,
   },
   hole: {

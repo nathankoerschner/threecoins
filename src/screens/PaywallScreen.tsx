@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   Alert,
 } from 'react-native';
@@ -13,14 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { colors, typography, spacing } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
-import {
-  getAvailablePackages,
-  purchaseSubscription,
-  purchaseCreditPack,
-  restorePurchases,
-} from '@/services/revenuecat';
 import { SUBSCRIPTION_DETAILS, CREDIT_PACK_DETAILS } from '@/constants/products';
-import type { PurchasesPackage } from 'react-native-purchases';
 
 type PaywallScreenNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,16 +23,7 @@ interface PaywallScreenProps {
 const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) => {
   const navigation = useNavigation<PaywallScreenNavigationProp>();
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [purchasing, setPurchasing] = useState(false);
-  const [subscriptionPackage, setSubscriptionPackage] = useState<PurchasesPackage | null>(null);
-  const [creditPackage, setCreditPackage] = useState<PurchasesPackage | null>(null);
   const [timeUntilFree, setTimeUntilFree] = useState('');
-
-  // Load available packages
-  useEffect(() => {
-    loadPackages();
-  }, []);
 
   // Update countdown timer
   useEffect(() => {
@@ -66,101 +49,17 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) =>
     return () => clearInterval(interval);
   }, [nextFreeReadingTime]);
 
-  const loadPackages = async () => {
-    try {
-      setLoading(true);
-      const { subscription, creditPack } = await getAvailablePackages();
-      setSubscriptionPackage(subscription);
-      setCreditPackage(creditPack);
-    } catch (error) {
-      console.error('Failed to load packages:', error);
-      Alert.alert('Error', 'Failed to load purchase options');
-    } finally {
-      setLoading(false);
-    }
+  const handlePurchaseSubscription = () => {
+    Alert.alert('Coming Soon', 'In-app purchases will be available soon!');
   };
 
-  const handlePurchaseSubscription = async () => {
-    if (!subscriptionPackage) {
-      Alert.alert('Error', 'Subscription not available');
-      return;
-    }
-
-    try {
-      setPurchasing(true);
-      await purchaseSubscription();
-      Alert.alert(
-        'Success!',
-        'You now have unlimited access to AI readings!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    } catch (error: any) {
-      if (error.message !== 'Purchase cancelled') {
-        Alert.alert('Purchase Failed', error.message || 'Please try again');
-      }
-    } finally {
-      setPurchasing(false);
-    }
+  const handlePurchaseCreditPack = () => {
+    Alert.alert('Coming Soon', 'In-app purchases will be available soon!');
   };
 
-  const handlePurchaseCreditPack = async () => {
-    if (!creditPackage) {
-      Alert.alert('Error', 'Credit pack not available');
-      return;
-    }
-
-    try {
-      setPurchasing(true);
-      await purchaseCreditPack();
-      Alert.alert(
-        'Success!',
-        `You now have ${CREDIT_PACK_DETAILS.AMOUNT} credits!`,
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
-    } catch (error: any) {
-      if (error.message !== 'Purchase cancelled') {
-        Alert.alert('Purchase Failed', error.message || 'Please try again');
-      }
-    } finally {
-      setPurchasing(false);
-    }
+  const handleRestorePurchases = () => {
+    Alert.alert('Coming Soon', 'Purchase restoration will be available soon!');
   };
-
-  const handleRestorePurchases = async () => {
-    try {
-      setPurchasing(true);
-      await restorePurchases();
-      Alert.alert('Success', 'Purchases restored successfully', [
-        {
-          text: 'OK',
-          onPress: () => navigation.goBack(),
-        },
-      ]);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to restore purchases');
-    } finally {
-      setPurchasing(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.accent.primary} />
-        <Text style={styles.loadingText}>Loading options...</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
@@ -189,65 +88,54 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) =>
         </View>
 
         {/* Subscription Option */}
-        {subscriptionPackage && (
-          <TouchableOpacity
-            style={[styles.optionCard, styles.recommendedCard]}
-            onPress={handlePurchaseSubscription}
-            disabled={purchasing}
-          >
-            <View style={styles.recommendedBadge}>
-              <Text style={styles.recommendedText}>RECOMMENDED</Text>
-            </View>
-            <View style={styles.optionHeader}>
-              <Text style={styles.optionTitle}>Premium Monthly</Text>
-              <Text style={styles.optionPrice}>
-                {subscriptionPackage.product.priceString}/{SUBSCRIPTION_DETAILS.PERIOD}
-              </Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.benefitsList}>
-              <Text style={styles.benefitItem}>✓ {SUBSCRIPTION_DETAILS.MONTHLY_READINGS} readings per month</Text>
-              <Text style={styles.benefitItem}>✓ Unlimited follow-up questions</Text>
-              <Text style={styles.benefitItem}>✓ Cancel anytime</Text>
-            </View>
-            <View style={styles.ctaContainer}>
-              <Text style={styles.ctaText}>
-                {purchasing ? 'Processing...' : 'Subscribe Now'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[styles.optionCard, styles.recommendedCard]}
+          onPress={handlePurchaseSubscription}
+        >
+          <View style={styles.recommendedBadge}>
+            <Text style={styles.recommendedText}>RECOMMENDED</Text>
+          </View>
+          <View style={styles.optionHeader}>
+            <Text style={styles.optionTitle}>Premium Monthly</Text>
+            <Text style={styles.optionPrice}>
+              {SUBSCRIPTION_DETAILS.PRICE}/{SUBSCRIPTION_DETAILS.PERIOD}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.benefitsList}>
+            <Text style={styles.benefitItem}>✓ {SUBSCRIPTION_DETAILS.MONTHLY_READINGS} readings per month</Text>
+            <Text style={styles.benefitItem}>✓ Unlimited follow-up questions</Text>
+            <Text style={styles.benefitItem}>✓ Cancel anytime</Text>
+          </View>
+          <View style={styles.ctaContainer}>
+            <Text style={styles.ctaText}>Subscribe Now</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Credit Pack Option */}
-        {creditPackage && (
-          <TouchableOpacity
-            style={styles.optionCard}
-            onPress={handlePurchaseCreditPack}
-            disabled={purchasing}
-          >
-            <View style={styles.optionHeader}>
-              <Text style={styles.optionTitle}>Credit Pack</Text>
-              <Text style={styles.optionPrice}>{creditPackage.product.priceString}</Text>
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.benefitsList}>
-              <Text style={styles.benefitItem}>✓ {CREDIT_PACK_DETAILS.AMOUNT} readings</Text>
-              <Text style={styles.benefitItem}>✓ Never expire</Text>
-              <Text style={styles.benefitItem}>✓ One-time purchase</Text>
-            </View>
-            <View style={[styles.ctaContainer, styles.secondaryCta]}>
-              <Text style={[styles.ctaText, styles.secondaryCtaText]}>
-                {purchasing ? 'Processing...' : 'Buy Credits'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={styles.optionCard}
+          onPress={handlePurchaseCreditPack}
+        >
+          <View style={styles.optionHeader}>
+            <Text style={styles.optionTitle}>Credit Pack</Text>
+            <Text style={styles.optionPrice}>{CREDIT_PACK_DETAILS.PRICE}</Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.benefitsList}>
+            <Text style={styles.benefitItem}>✓ {CREDIT_PACK_DETAILS.AMOUNT} readings</Text>
+            <Text style={styles.benefitItem}>✓ Never expire</Text>
+            <Text style={styles.benefitItem}>✓ One-time purchase</Text>
+          </View>
+          <View style={[styles.ctaContainer, styles.secondaryCta]}>
+            <Text style={[styles.ctaText, styles.secondaryCtaText]}>Buy Credits</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Restore Purchases */}
         <TouchableOpacity
           style={styles.restoreButton}
           onPress={handleRestorePurchases}
-          disabled={purchasing}
         >
           <Text style={styles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
@@ -258,13 +146,6 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) =>
           Subscriptions auto-renew unless cancelled.
         </Text>
       </ScrollView>
-
-      {/* Loading overlay */}
-      {purchasing && (
-        <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.accent.primary} />
-        </View>
-      )}
     </View>
   );
 };
@@ -423,21 +304,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: spacing.xl,
     lineHeight: typography.fontSize.xs * 1.6,
-  },
-  loadingText: {
-    marginTop: spacing.md,
-    fontSize: typography.fontSize.md,
-    color: colors.text.secondary,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });
 

@@ -8,7 +8,6 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/config/firebase';
-import { initializeRevenueCat } from '@/services/revenuecat';
 
 interface AuthContextType {
   user: User | null;
@@ -125,14 +124,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setUser(firebaseUser);
         // Ensure user document exists
         await initializeUserDocument(firebaseUser.uid, false);
-
-        // Initialize RevenueCat with user ID
-        try {
-          await initializeRevenueCat(firebaseUser.uid);
-        } catch (error) {
-          console.error('Failed to initialize RevenueCat:', error);
-          // Don't block user from using app if RevenueCat fails
-        }
       } else {
         // No user - sign in anonymously
         try {

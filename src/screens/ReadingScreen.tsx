@@ -71,17 +71,31 @@ const styles = StyleSheet.create({
     top: 60,
     right: spacing.lg,
     zIndex: 100,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    // Premium shadow with gold glow
+    shadowColor: colors.accent.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+    // Refined border
+    borderWidth: 1,
+    borderColor: colors.accent.light,
   },
   closeButtonText: {
-    fontSize: 20,
+    fontSize: 22,
     color: colors.background.primary,
-    fontWeight: typography.fontWeight.bold,
+    fontWeight: typography.fontWeight.heavy,
+    lineHeight: 22,
+    // Subtle embossed effect
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
   scrollView: {
     flex: 1,
@@ -89,6 +103,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingTop: 60,
+    paddingBottom: spacing.xxxl,
   },
 });
 

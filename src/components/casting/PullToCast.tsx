@@ -15,7 +15,8 @@ import { colors, typography, spacing } from '@/theme';
 import { PullDirection } from '@/types';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const PULL_THRESHOLD = 150; // Distance to pull before triggering
+const PULL_THRESHOLD_VERTICAL = 150; // Distance to pull vertically before triggering
+const PULL_THRESHOLD_HORIZONTAL = 60; // Distance to pull horizontally before triggering
 const MAX_PULL = 200; // Maximum pull distance (rubber band limit)
 
 interface PullToCastProps {
@@ -87,7 +88,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
 
         translateY.value = Math.min(dampedTranslation, MAX_PULL);
         // Use ACTUAL translation for progress, not damped
-        pullProgress.value = Math.min(event.translationY / PULL_THRESHOLD, 1);
+        pullProgress.value = Math.min(event.translationY / PULL_THRESHOLD_VERTICAL, 1);
         pullProgressUp.value = 0; // Reset other progress values
         pullProgressLeft.value = 0;
         pullProgressRight.value = 0;
@@ -102,7 +103,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         // Negative value (moves container up)
         translateY.value = -Math.min(dampedTranslation, MAX_PULL);
         // Use ACTUAL translation for progress, not damped
-        pullProgressUp.value = Math.min(absTranslation / PULL_THRESHOLD, 1);
+        pullProgressUp.value = Math.min(absTranslation / PULL_THRESHOLD_VERTICAL, 1);
         pullProgress.value = 0; // Reset other progress values
         pullProgressLeft.value = 0;
         pullProgressRight.value = 0;
@@ -112,7 +113,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         // Don't move the coins horizontally - keep them locked in place
         translateX.value = 0;
         // Track progress for threshold detection
-        pullProgressRight.value = Math.min(event.translationX / PULL_THRESHOLD, 1);
+        pullProgressRight.value = Math.min(event.translationX / PULL_THRESHOLD_HORIZONTAL, 1);
         pullProgress.value = 0;
         pullProgressUp.value = 0;
         pullProgressLeft.value = 0;
@@ -123,7 +124,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         // Don't move the coins horizontally - keep them locked in place
         translateX.value = 0;
         // Track progress for threshold detection
-        pullProgressLeft.value = Math.min(absTranslation / PULL_THRESHOLD, 1);
+        pullProgressLeft.value = Math.min(absTranslation / PULL_THRESHOLD_HORIZONTAL, 1);
         pullProgress.value = 0;
         pullProgressUp.value = 0;
         pullProgressRight.value = 0;
@@ -133,7 +134,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
       const currentDirection = pullDirection.value;
 
       // Check if threshold was met for pull DOWN
-      if (currentDirection === 'down' && event.translationY >= PULL_THRESHOLD && !isDisabled) {
+      if (currentDirection === 'down' && event.translationY >= PULL_THRESHOLD_VERTICAL && !isDisabled) {
         // Calculate damped translation to match actual visual position
         const rubberBandFactor = 1 - (event.translationY / MAX_PULL) * 0.5;
         const dampedTranslation = event.translationY * Math.max(0.3, rubberBandFactor);
@@ -144,7 +145,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         // Don't animate back here - the useEffect will handle instant reset
       }
       // Check if threshold was met for pull UP
-      else if (currentDirection === 'up' && Math.abs(event.translationY) >= PULL_THRESHOLD && !isDisabled) {
+      else if (currentDirection === 'up' && Math.abs(event.translationY) >= PULL_THRESHOLD_VERTICAL && !isDisabled) {
         const absTranslation = Math.abs(event.translationY);
         // Calculate damped translation to match actual visual position
         const rubberBandFactor = 1 - (absTranslation / MAX_PULL) * 0.5;
@@ -156,7 +157,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         // Don't animate back here - the useEffect will handle instant reset
       }
       // Check if threshold was met for pull RIGHT
-      else if (currentDirection === 'right' && event.translationX >= PULL_THRESHOLD && !isDisabled) {
+      else if (currentDirection === 'right' && event.translationX >= PULL_THRESHOLD_HORIZONTAL && !isDisabled) {
         const rubberBandFactor = 1 - (event.translationX / MAX_PULL) * 0.5;
         const dampedTranslation = event.translationX * Math.max(0.3, rubberBandFactor);
         const actualVisualDistance = Math.min(dampedTranslation, MAX_PULL);
@@ -164,7 +165,7 @@ export const PullToCast: React.FC<PullToCastProps> = ({
         runOnJS(onRelease)(actualVisualDistance, 'right');
       }
       // Check if threshold was met for pull LEFT
-      else if (currentDirection === 'left' && Math.abs(event.translationX) >= PULL_THRESHOLD && !isDisabled) {
+      else if (currentDirection === 'left' && Math.abs(event.translationX) >= PULL_THRESHOLD_HORIZONTAL && !isDisabled) {
         const absTranslation = Math.abs(event.translationX);
         const rubberBandFactor = 1 - (absTranslation / MAX_PULL) * 0.5;
         const dampedTranslation = absTranslation * Math.max(0.3, rubberBandFactor);

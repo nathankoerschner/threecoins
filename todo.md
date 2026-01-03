@@ -4,5 +4,4 @@ side swipe not sensitive enough
 
 Text box not showing complete button
 
-Adjust AI Summaries
-
+Adjust AI Summaries--more situational less whole life

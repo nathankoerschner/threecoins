@@ -80,31 +80,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   numberBadge: {
-    backgroundColor: colors.background.secondary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
-    marginBottom: spacing.md,
+    backgroundColor: colors.background.tertiary,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    borderRadius: 24,
+    marginBottom: spacing.base,
+    // Premium shadow for depth
+    shadowColor: colors.shadow.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+    // Subtle border for refinement
+    borderWidth: 1,
+    borderColor: colors.accent.subtle,
   },
   numberText: {
     color: colors.accent.primary,
     fontWeight: typography.fontWeight.bold,
+    letterSpacing: typography.letterSpacing.wide,
+    // Subtle glow effect
+    textShadowColor: colors.shadow.gold,
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
   },
   hexagramContainer: {
-    marginVertical: spacing.md,
+    marginVertical: spacing.base,
   },
   metadataContainer: {
     alignItems: 'center',
-    marginTop: spacing.md,
+    marginTop: spacing.lg,
   },
   englishName: {
     color: colors.text.primary,
+    fontFamily: typography.fontFamily.display,
     fontWeight: typography.fontWeight.semibold,
     textAlign: 'center',
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    letterSpacing: typography.letterSpacing.tight,
+    // Subtle text shadow for depth
+    ...typography.textShadow.subtle,
   },
   chineseName: {
     color: colors.text.secondary,
+    fontFamily: typography.fontFamily.text,
+    fontWeight: typography.fontWeight.regular,
     textAlign: 'center',
+    letterSpacing: typography.letterSpacing.wide,
+    opacity: 0.9,
   },
 });

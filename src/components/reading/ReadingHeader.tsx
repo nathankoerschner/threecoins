@@ -22,18 +22,27 @@ export const ReadingHeader: React.FC<ReadingHeaderProps> = ({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: spacing.xxl,
+    paddingVertical: spacing.base,
   },
   title: {
     fontSize: typography.fontSize.xxxl,
-    fontWeight: typography.fontWeight.bold,
+    fontFamily: typography.fontFamily.display,
+    fontWeight: typography.fontWeight.heavy,
     color: colors.accent.primary,
     textAlign: 'center',
+    letterSpacing: typography.letterSpacing.tighter,
+    // Dramatic gold glow
+    ...typography.textShadow.gold,
   },
   subtitle: {
-    fontSize: typography.fontSize.md,
-    color: colors.text.secondary,
+    fontSize: typography.fontSize.base,
+    fontFamily: typography.fontFamily.text,
+    fontWeight: typography.fontWeight.regular,
+    color: colors.text.tertiary,
     textAlign: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    letterSpacing: typography.letterSpacing.wide,
+    opacity: 0.9,
   },
 });
