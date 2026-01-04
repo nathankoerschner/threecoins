@@ -1,5 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+
+// Token-based height calculation for fixed response box
+// 1500 tokens × 4 chars/token = 6000 chars
+// Use ~500px visible height with internal scroll
+const RESPONSE_BOX_HEIGHT = 500;
 import Markdown from 'react-native-markdown-display';
 import { useAuth } from '@/context/AuthContext';
 import { useCastingContext } from '@/context/CastingContext';
@@ -227,12 +232,18 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
     <View style={styles.container}>
       <Text style={styles.title}>Interpretation</Text>
       <View style={styles.contentContainer}>
-        <Markdown style={markdownStyles}>{content}</Markdown>
-        {status === 'streaming' && (
-          <View style={styles.streamingIndicator}>
-            <Text style={styles.streamingDot}>●</Text>
-          </View>
-        )}
+        <ScrollView
+          style={styles.internalScroll}
+          contentContainerStyle={styles.internalScrollContent}
+          showsVerticalScrollIndicator={true}
+        >
+          <Markdown style={markdownStyles}>{content}</Markdown>
+          {status === 'streaming' && (
+            <View style={styles.streamingIndicator}>
+              <Text style={styles.streamingDot}>●</Text>
+            </View>
+          )}
+        </ScrollView>
       </View>
     </View>
   );
@@ -265,6 +276,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
+    // Fixed height with internal scroll
+    height: RESPONSE_BOX_HEIGHT,
+    overflow: 'hidden',
+  },
+  internalScroll: {
+    flex: 1,
+  },
+  internalScrollContent: {
+    paddingBottom: spacing.lg,
   },
   content: {
     fontSize: typography.fontSize.md,
@@ -290,7 +310,11 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.xxxl,
+    height: RESPONSE_BOX_HEIGHT,
+    backgroundColor: colors.background.tertiary,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.accent.subtle,
   },
   loadingText: {
     marginTop: spacing.lg,
@@ -312,6 +336,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
+    // Fixed height for consistency
+    height: RESPONSE_BOX_HEIGHT,
+    justifyContent: 'center',
   },
   errorTitle: {
     fontSize: typography.fontSize.lg,

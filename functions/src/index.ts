@@ -2,6 +2,12 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import OpenAI from 'openai';
 import { logError } from './logger';
+import {
+  buildUserPrompt,
+  canUseFreeReading,
+  isQuestionTooLong,
+  UserData,
+} from './helpers';
 
 // Initialize Firebase Admin
 admin.initializeApp();
@@ -35,17 +41,6 @@ interface InterpretationRequest {
   changingLines: number[];
   question?: string;
   readingId: string;
-}
-
-interface UserData {
-  lastFreeReading?: {
-    toMillis: () => number;
-  } | null;
-  credits: number;
-  subscription?: {
-    status: string;
-    monthlyReadingsUsed: number;
-  };
 }
 
 // Main function to generate AI interpretation
@@ -90,13 +85,10 @@ export const generateInterpretation = functions
       const userData = userDoc.data() as UserData;
       const hasCredits = userData.credits > 0;
       const hasActiveSubscription = userData.subscription?.status === 'active';
-      const canUseFreeReading = await checkFreeReadingAvailability(
-        userId,
-        userData,
-      );
+      const canUseFreeDailyReading = checkFreeReadingAvailability(userData);
 
       // Check if user can make a reading
-      if (!hasCredits && !hasActiveSubscription && !canUseFreeReading) {
+      if (!hasCredits && !hasActiveSubscription && !canUseFreeDailyReading) {
         throw new functions.https.HttpsError(
           'permission-denied',
           'No credits or active subscription available',
@@ -131,6 +123,7 @@ export const generateInterpretation = functions
           { role: 'user', content: userPrompt },
         ],
         stream: true,
+        max_completion_tokens: 1500, // ~6000 characters, ensures consistent response length for UI sizing
       });
 
       // Process stream chunks
@@ -152,7 +145,7 @@ export const generateInterpretation = functions
       });
 
       // Deduct credit or update subscription usage
-      await deductCredit(userId, hasActiveSubscription, canUseFreeReading);
+      await deductCredit(userId, hasActiveSubscription, canUseFreeDailyReading);
 
       // Update analytics
       await admin
@@ -197,15 +190,9 @@ export const generateInterpretation = functions
   });
 
 // Check if user can use their free daily reading
-async function checkFreeReadingAvailability(
-  userId: string,
-  userData: UserData,
-): Promise<boolean> {
+function checkFreeReadingAvailability(userData: UserData): boolean {
   const lastFreeReading = userData.lastFreeReading?.toMillis() || 0;
-  const now = Date.now();
-  const twentyFourHours = 24 * 60 * 60 * 1000;
-
-  return now - lastFreeReading >= twentyFourHours;
+  return canUseFreeReading(lastFreeReading);
 }
 
 // Deduct credit or update free reading timestamp
@@ -241,39 +228,6 @@ async function deductCredit(
   }
 }
 
-// Build the user prompt from hexagram data
-function buildUserPrompt(
-  primary: InterpretationRequest['primaryHexagram'],
-  relating: InterpretationRequest['relatingHexagram'],
-  changingLines: number[],
-  question?: string,
-): string {
-  let prompt = '';
-
-  if (question) {
-    prompt += `Question is: "${question}"\n\n`;
-  } else {
-    prompt += '';
-  }
-
-  prompt += `Primary Hexagram: #${primary.number} ${primary.englishName} (${primary.chineseName})\n`;
-
-  if (changingLines.length > 0) {
-    prompt += `Changing Lines: ${changingLines.join(', ')}\n`;
-  }
-
-  if (relating) {
-    prompt += `Relating Hexagram: #${relating.number} ${relating.englishName} (${relating.chineseName})\n`;
-  } else {
-    prompt += 'No changing lines.\n';
-  }
-
-  prompt +=
-    '\nPlease provide an interpretation';
-
-  return prompt;
-}
-
 // Moderation check function (pre-check before main interpretation)
 export const moderateQuestion = functions
   .region('us-central1')
@@ -291,7 +245,7 @@ export const moderateQuestion = functions
     const { question } = data;
 
     // Character limit check
-    if (question.length > 500) {
+    if (isQuestionTooLong(question)) {
       return {
         approved: false,
         reason: 'Question exceeds maximum length of 500 characters',

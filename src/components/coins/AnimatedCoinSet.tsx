@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { AnimatedCoin } from './AnimatedCoin';
 import { CoinAnimationConfig, DEFAULT_ANIMATION_CONFIG } from '@/hooks/useAnimations';
@@ -28,6 +28,14 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
   const [coinConfigs, setCoinConfigs] = useState<CoinAnimationConfig[]>([]);
   const [coinDelays, setCoinDelays] = useState<number[]>([0, 0, 0]);
   const gap = spacing.md;
+
+  // Store callback in ref to prevent useEffect re-triggering when callback reference changes
+  const onAnimationCompleteRef = useRef(onAnimationComplete);
+
+  // Keep ref up to date
+  useEffect(() => {
+    onAnimationCompleteRef.current = onAnimationComplete;
+  }, [onAnimationComplete]);
 
   // Generate random animation parameters when new animation starts
   useEffect(() => {
@@ -65,11 +73,12 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
   }, [shouldAnimate, config]);
 
   // Call completion callback when all coins are done
+  // Use ref to prevent re-triggering when callback reference changes (e.g., during streaming)
   useEffect(() => {
-    if (completedCoins === 3 && onAnimationComplete) {
-      onAnimationComplete();
+    if (completedCoins === 3 && onAnimationCompleteRef.current) {
+      onAnimationCompleteRef.current();
     }
-  }, [completedCoins, onAnimationComplete]);
+  }, [completedCoins]);
 
   const handleCoinComplete = () => {
     setCompletedCoins((prev) => prev + 1);

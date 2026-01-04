@@ -30,7 +30,8 @@ const CastingScreen: React.FC = () => {
   const navigation = useNavigation<CastingScreenNavigationProp>();
   const route = useRoute<CastingScreenRouteProp>();
   const { lines, isComplete, currentLineNumber, reading, throwCoins, resetCasting } = useCasting();
-  const { triggerHaptic, triggerStaggeredCoinLandings } = useHaptics();
+  const { triggerHaptic, triggerStaggeredCoinLandings, clearPendingHaptics } = useHaptics();
+  const coinLandingTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track coin landing haptic timeout
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const [isThrowingCoins, setIsThrowingCoins] = useState(false);
   const [animationKey, setAnimationKey] = useState(0); // Force re-animation even with same coins
@@ -149,7 +150,7 @@ const CastingScreen: React.FC = () => {
 
       // Trigger staggered haptics for coin landings
       // Delay matches animation: coins start falling immediately, land after ~1s
-      setTimeout(() => {
+      coinLandingTimeoutRef.current = setTimeout(() => {
         triggerStaggeredCoinLandings(3, 150); // 3 coins, 150ms apart
       }, 1000);
     }
@@ -190,6 +191,13 @@ const CastingScreen: React.FC = () => {
         clearTimeout(navigationTimeoutRef.current);
         navigationTimeoutRef.current = null;
       }
+
+      // Clear any pending haptic feedback
+      if (coinLandingTimeoutRef.current) {
+        clearTimeout(coinLandingTimeoutRef.current);
+        coinLandingTimeoutRef.current = null;
+      }
+      clearPendingHaptics();
 
       // Reset casting context state
       resetCasting();
@@ -241,6 +249,13 @@ const CastingScreen: React.FC = () => {
       navigationTimeoutRef.current = null;
     }
 
+    // Clear any pending haptic feedback
+    if (coinLandingTimeoutRef.current) {
+      clearTimeout(coinLandingTimeoutRef.current);
+      coinLandingTimeoutRef.current = null;
+    }
+    clearPendingHaptics();
+
     // Reset all animation states first
     setShouldAnimate(false);
     setIsThrowingCoins(false);
@@ -269,6 +284,13 @@ const CastingScreen: React.FC = () => {
   const handleSkipAnimation = () => {
     // Only skip if an animation is in progress
     if (isAnimating || shouldAnimate) {
+      // Cancel any pending haptic feedback
+      if (coinLandingTimeoutRef.current) {
+        clearTimeout(coinLandingTimeoutRef.current);
+        coinLandingTimeoutRef.current = null;
+      }
+      clearPendingHaptics();
+
       // Immediately complete the current animation
       setShouldAnimate(false);
       setIsAnimating(false);

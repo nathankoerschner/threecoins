@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react';
 import * as Haptics from 'expo-haptics';
 
 export type HapticFeedbackType =
@@ -8,6 +9,14 @@ export type HapticFeedbackType =
   | 'buttonPress';    // Generic button press
 
 export const useHaptics = () => {
+  // Track pending haptic timeouts so they can be cancelled
+  const pendingTimeouts = useRef<NodeJS.Timeout[]>([]);
+
+  const clearPendingHaptics = useCallback(() => {
+    pendingTimeouts.current.forEach((timeout) => clearTimeout(timeout));
+    pendingTimeouts.current = [];
+  }, []);
+
   const triggerHaptic = async (type: HapticFeedbackType) => {
     try {
       switch (type) {
@@ -50,17 +59,19 @@ export const useHaptics = () => {
     }
   };
 
-  const triggerStaggeredCoinLandings = async (count: number = 3, delay: number = 150) => {
+  const triggerStaggeredCoinLandings = useCallback((count: number = 3, delay: number = 150) => {
     // Trigger haptics for multiple coins landing with stagger
     for (let i = 0; i < count; i++) {
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         triggerHaptic('coinLand');
       }, i * delay);
+      pendingTimeouts.current.push(timeout);
     }
-  };
+  }, []);
 
   return {
     triggerHaptic,
     triggerStaggeredCoinLandings,
+    clearPendingHaptics,
   };
 };
