@@ -21,18 +21,20 @@ const getOpenAI = () => {
 };
 
 // System prompt for I Ching interpretations
-const SYSTEM_PROMPT = `Interpret this I Ching reading in a natural, conversational way. Talk like a friend
-who happens to know the I Ching well, not like a mystical oracle.
+const SYSTEM_PROMPT = '';
 
-Cover what matters:
-- What's going on in their situation right now
-- What the changing lines (if any) suggest about where things are headed
-- Practical advice they can actually use
-
-Write naturally. Don't follow a formula. Use everyday language and real examples when they help.
-If they asked a specific question, focus on that. If not, read what the hexagrams suggest.
-
-Keep it 150-200 words. Be direct and helpful.`;
+// `Interpret this I Ching reading in a natural, conversational way. Talk like a friend
+// who happens to know the I Ching well, not like a mystical oracle.
+//
+// Cover what matters:
+// - What's going on in their situation right now
+// - What the changing lines (if any) suggest about where things are headed
+// - Practical advice they can actually use
+//
+// Write naturally. Don't follow a formula. Use everyday language and real examples when they help.
+// If they asked a specific question, focus on that. If not, read what the hexagrams suggest.
+//
+// Keep it 150-200 words. Be direct and helpful.`;
 
 interface InterpretationRequest {
   primaryHexagram: {
@@ -72,39 +74,57 @@ export const generateInterpretation = functions
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',
-        'User must be authenticated to request an interpretation.'
+        'User must be authenticated to request an interpretation.',
       );
     }
 
     const userId = context.auth.uid;
-    const { primaryHexagram, relatingHexagram, changingLines, question, readingId } = data;
+    const {
+      primaryHexagram,
+      relatingHexagram,
+      changingLines,
+      question,
+      readingId,
+    } = data;
 
     try {
       // Check if user has credits or active subscription
-      const userDoc = await admin.firestore().collection('users').doc(userId).get();
+      const userDoc = await admin
+        .firestore()
+        .collection('users')
+        .doc(userId)
+        .get();
 
       if (!userDoc.exists) {
         throw new functions.https.HttpsError(
           'not-found',
-          'User document not found'
+          'User document not found',
         );
       }
 
       const userData = userDoc.data() as UserData;
       const hasCredits = userData.credits > 0;
       const hasActiveSubscription = userData.subscription?.status === 'active';
-      const canUseFreeReading = await checkFreeReadingAvailability(userId, userData);
+      const canUseFreeReading = await checkFreeReadingAvailability(
+        userId,
+        userData,
+      );
 
       // Check if user can make a reading
       if (!hasCredits && !hasActiveSubscription && !canUseFreeReading) {
         throw new functions.https.HttpsError(
           'permission-denied',
-          'No credits or active subscription available'
+          'No credits or active subscription available',
         );
       }
 
       // Construct user prompt
-      const userPrompt = buildUserPrompt(primaryHexagram, relatingHexagram, changingLines, question);
+      const userPrompt = buildUserPrompt(
+        primaryHexagram,
+        relatingHexagram,
+        changingLines,
+        question,
+      );
 
       // Create reference to Realtime Database for streaming
       const rtdbRef = admin.database().ref(`readings/${userId}/${readingId}`);
@@ -153,18 +173,22 @@ export const generateInterpretation = functions
       await deductCredit(userId, hasActiveSubscription, canUseFreeReading);
 
       // Update analytics
-      await admin.firestore().collection('users').doc(userId).update({
-        'analytics.totalCasts': admin.firestore.FieldValue.increment(1),
-      });
+      await admin
+        .firestore()
+        .collection('users')
+        .doc(userId)
+        .update({
+          'analytics.totalCasts': admin.firestore.FieldValue.increment(1),
+        });
 
       return {
         success: true,
         readingId,
         message: 'Interpretation generated successfully',
       };
-
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
       logError('Error generating interpretation', { error });
 
       // Update status to error
@@ -185,7 +209,7 @@ export const generateInterpretation = functions
       throw new functions.https.HttpsError(
         'internal',
         'Failed to generate interpretation',
-        errorMessage
+        errorMessage,
       );
     }
   });
@@ -193,17 +217,21 @@ export const generateInterpretation = functions
 // Check if user can use their free daily reading
 async function checkFreeReadingAvailability(
   userId: string,
-  userData: UserData
+  userData: UserData,
 ): Promise<boolean> {
   const lastFreeReading = userData.lastFreeReading?.toMillis() || 0;
   const now = Date.now();
   const twentyFourHours = 24 * 60 * 60 * 1000;
 
-  return (now - lastFreeReading) >= twentyFourHours;
+  return now - lastFreeReading >= twentyFourHours;
 }
 
 // Deduct credit or update free reading timestamp
-async function deductCredit(userId: string, hasActiveSubscription: boolean, isFreeReading: boolean): Promise<void> {
+async function deductCredit(
+  userId: string,
+  hasActiveSubscription: boolean,
+  isFreeReading: boolean,
+): Promise<void> {
   if (isFreeReading) {
     // Update last free reading timestamp
     await admin.firestore().collection('users').doc(userId).update({
@@ -211,14 +239,23 @@ async function deductCredit(userId: string, hasActiveSubscription: boolean, isFr
     });
   } else if (hasActiveSubscription) {
     // Increment monthly readings used
-    await admin.firestore().collection('users').doc(userId).update({
-      'subscription.monthlyReadingsUsed': admin.firestore.FieldValue.increment(1),
-    });
+    await admin
+      .firestore()
+      .collection('users')
+      .doc(userId)
+      .update({
+        'subscription.monthlyReadingsUsed':
+          admin.firestore.FieldValue.increment(1),
+      });
   } else {
     // Deduct credit
-    await admin.firestore().collection('users').doc(userId).update({
-      credits: admin.firestore.FieldValue.increment(-1),
-    });
+    await admin
+      .firestore()
+      .collection('users')
+      .doc(userId)
+      .update({
+        credits: admin.firestore.FieldValue.increment(-1),
+      });
   }
 }
 
@@ -227,14 +264,14 @@ function buildUserPrompt(
   primary: InterpretationRequest['primaryHexagram'],
   relating: InterpretationRequest['relatingHexagram'],
   changingLines: number[],
-  question?: string
+  question?: string,
 ): string {
   let prompt = '';
 
   if (question) {
-    prompt += `The querent asks: "${question}"\n\n`;
+    prompt += `Question is: "${question}"\n\n`;
   } else {
-    prompt += 'The querent seeks a general life reading.\n\n';
+    prompt += '';
   }
 
   prompt += `Primary Hexagram: #${primary.number} ${primary.englishName} (${primary.chineseName})\n`;
@@ -246,10 +283,11 @@ function buildUserPrompt(
   if (relating) {
     prompt += `Relating Hexagram: #${relating.number} ${relating.englishName} (${relating.chineseName})\n`;
   } else {
-    prompt += 'No changing lines - this hexagram stands complete.\n';
+    prompt += 'No changing lines.\n';
   }
 
-  prompt += '\nPlease provide an interpretation following the structure outlined in your system prompt.';
+  prompt +=
+    '\nPlease provide an interpretation';
 
   return prompt;
 }
@@ -264,7 +302,7 @@ export const moderateQuestion = functions
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',
-        'User must be authenticated'
+        'User must be authenticated',
       );
     }
 

@@ -52,3 +52,11 @@ export interface Reading {
   castLines: CastLine[];
   timestamp: number;
 }
+
+// Details content for each hexagram (pre-generated, non-copyrighted)
+export interface HexagramDetails {
+  hexagramNumber: number;
+  image: string; // Trigram imagery commentary
+  judgment: string; // Main meaning and guidance
+  lines: Record<number, string>; // Line 1-6 meanings
+}

@@ -3,7 +3,9 @@
 import { Reading } from '@/types';
 
 export type RootStackParamList = {
-  Casting: undefined;
+  Casting: {
+    shouldReset?: boolean;
+  } | undefined;
   Reading: {
     reading: Reading;
     question?: string;

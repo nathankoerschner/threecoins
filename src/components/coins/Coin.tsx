@@ -139,27 +139,27 @@ export const Coin: React.FC<CoinProps> = ({ isHeads, size = 60 }) => {
           // YIN SIDE: Manchu script (rotated 90 degrees clockwise)
           <>
             {/* Left of hole: ᠪᠣᠣ (Boo) - rotated clockwise */}
-            <Text style={[
-              styles.manchuScript,
-              {
-                fontSize: fontSize * 0.9,
-                left: size * 0.03,
-                transform: [{ rotate: '90deg' }],
-              }
-            ]}>
-              ᠪᠣᠣ
-            </Text>
+            <View
+              style={[
+                styles.manchuWrapper,
+                { left: size * 0.03 }
+              ]}
+            >
+              <Text style={[styles.manchuScript, { fontSize: fontSize * 0.9 }]}>
+                ᠪᠣᠣ
+              </Text>
+            </View>
             {/* Right of hole: ᠴᡳᠣᠸᠠᠨ (Ciowan) - rotated clockwise */}
-            <Text style={[
-              styles.manchuScript,
-              {
-                fontSize: fontSize * 0.8,
-                right: size * -0.1,
-                transform: [{ rotate: '90deg' }],
-              }
-            ]}>
-              ᠴᡳᠣᠸᠠᠨ
-            </Text>
+            <View
+              style={[
+                styles.manchuWrapper,
+                { right: size * -0.1 }
+              ]}
+            >
+              <Text style={[styles.manchuScript, { fontSize: fontSize * 0.8 }]}>
+                ᠴᡳᠣᠸᠠᠨ
+              </Text>
+            </View>
           </>
         )}
       </View>
@@ -267,8 +267,11 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: -0.5, height: -0.5 },
     textShadowRadius: 0.5,
   },
-  manchuScript: {
+  manchuWrapper: {
     position: 'absolute',
+    transform: [{ rotate: '90deg' }],
+  },
+  manchuScript: {
     color: '#6B5D3F', // Dark gold for raised embossed look
     fontWeight: '600',
     opacity: 1,

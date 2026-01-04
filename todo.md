@@ -1,7 +1,7 @@
-display of manchu without transform on initial screen
+move hexagram down slightly
 
-side swipe not sensitive enough
+Context on the actual hexagram reading 
 
-Text box not showing complete button
+make the swipe up and down easier
 
-Adjust AI Summaries--more situational less whole life
+slight jumping when scrolling far to the right or left on coins

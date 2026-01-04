@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, TextInput, Dimensions, Keyboard, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, TextInput, Dimensions, Keyboard, TouchableWithoutFeedback, InputAccessoryView, Platform } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,7 +8,7 @@ import Animated, {
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useCasting } from '@/hooks/useCasting';
@@ -17,13 +17,18 @@ import { HexagramStack } from '@/components/hexagram/HexagramStack';
 import { AnimatedCoinSet } from '@/components/coins/AnimatedCoinSet';
 import { PullToCast } from '@/components/casting/PullToCast';
 import { SwipeableTopArea } from '@/components/casting/SwipeableTopArea';
+import { BackgroundTexture } from '@/components/layout/BackgroundTexture';
 import { colors, typography, spacing } from '@/theme';
 import { PullDirection } from '@/types';
 
 type CastingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Casting'>;
+type CastingScreenRouteProp = RouteProp<RootStackParamList, 'Casting'>;
+
+const INPUT_ACCESSORY_VIEW_ID = 'questionInputAccessory';
 
 const CastingScreen: React.FC = () => {
   const navigation = useNavigation<CastingScreenNavigationProp>();
+  const route = useRoute<CastingScreenRouteProp>();
   const { lines, isComplete, currentLineNumber, reading, throwCoins, resetCasting } = useCasting();
   const { triggerHaptic, triggerStaggeredCoinLandings } = useHaptics();
   const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -38,6 +43,11 @@ const CastingScreen: React.FC = () => {
   const [question, setQuestion] = useState(''); // User's question for the I Ching reading
   const [activeView, setActiveView] = useState<'question' | 'hexagram'>('question'); // Track which view is active
   const screenWidth = Dimensions.get('window').width; // Get screen width for translation
+  const screenHeight = Dimensions.get('window').height;
+  const hexagramTopMargin = Math.round(
+    screenHeight * (screenHeight >= 800 ? 0.1 : 0.03)
+  );
+  const coinsBottomOffset = screenHeight <= 700 ? 60 : 100;
   const carouselTranslateX = useSharedValue(0); // Animated translateX for carousel
   const hasNavigatedToReading = useRef(false); // Track if we've already navigated to reading screen
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track navigation timeout
@@ -157,6 +167,38 @@ const CastingScreen: React.FC = () => {
     }
   }, [shouldAnimate]);
 
+  // Handle reset when navigating from "New Reading" button
+  useEffect(() => {
+    if (route.params?.shouldReset) {
+      // Reset all local state
+      setShouldAnimate(false);
+      setIsThrowingCoins(false);
+      setAnimationKey(0);
+      setPullDistance(0);
+      setPullDirection('down');
+      setVisibleLineCount(0);
+      setAnimationCompleteCallback(null);
+      setIsAnimating(false);
+      setIsRepositioning(false);
+      setActiveView('question');
+      carouselTranslateX.value = 0;
+      setQuestion('');
+      hasNavigatedToReading.current = false;
+
+      // Clear navigation timeout
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current);
+        navigationTimeoutRef.current = null;
+      }
+
+      // Reset casting context state
+      resetCasting();
+
+      // Clear the param to prevent re-triggering
+      navigation.setParams({ shouldReset: undefined });
+    }
+  }, [route.params?.shouldReset]);
+
   const handleThrowCoins = (distance: number, direction: PullDirection) => {
     if (!shouldAnimate && !isComplete && !isThrowingCoins) {
       // Haptic feedback for throw action
@@ -263,19 +305,9 @@ const CastingScreen: React.FC = () => {
   };
 
   return (
+    <>
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-      <View style={styles.container}>
-        {/* Reset button in top left */}
-        {lines.length > 0 && (
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            style={styles.resetButtonTop}
-            onPress={handleReset}
-          >
-            <Text style={styles.resetButtonText}>Reset</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <BackgroundTexture style={styles.container}>
 
       {/* Swipeable Top Content Area */}
       <View style={styles.carouselWrapper}>
@@ -297,22 +329,27 @@ const CastingScreen: React.FC = () => {
                 value={question}
                 onChangeText={setQuestion}
                 multiline
-                numberOfLines={3}
                 maxLength={200}
-                editable={activeView === 'question'} // Only editable when visible
+                editable={activeView === 'question'}
+                inputAccessoryViewID={INPUT_ACCESSORY_VIEW_ID}
               />
               <Text style={styles.instructionText}>
                 {lines.length === 0
                   ? 'Then swipe on the coins to start casting'
                   : 'Swipe to see hexagram →'}
               </Text>
+              {lines.length > 0 && (
+                <TouchableOpacity onPress={handleReset} style={styles.startOverButton}>
+                  <Text style={styles.startOverText}>Start Over</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 
           {/* Screen 1: Hexagram View */}
           <View style={[styles.carouselScreen, { width: screenWidth }]}>
             {visibleLineCount > 0 && (
-              <View style={styles.hexagramContainer}>
+              <View style={[styles.hexagramContainer, { marginTop: hexagramTopMargin }]}>
                 <Animated.View style={[styles.hexagramCard, hexagramCardAnimatedStyle]}>
                   <HexagramStack
                     lines={lines.slice(0, visibleLineCount)}
@@ -333,6 +370,9 @@ const CastingScreen: React.FC = () => {
                   >
                     <Text style={styles.viewReadingButtonText}>View Reading</Text>
                   </TouchableOpacity>
+                  <TouchableOpacity onPress={handleReset} style={styles.startOverButton}>
+                    <Text style={styles.startOverText}>Start Over</Text>
+                  </TouchableOpacity>
                 </Animated.View>
               </View>
             )}
@@ -345,7 +385,7 @@ const CastingScreen: React.FC = () => {
       <View style={styles.flexibleSpacer} />
 
       {/* Absolutely positioned coins container - fixed to bottom */}
-      <View style={styles.absoluteCoinsContainer}>
+      <View style={[styles.absoluteCoinsContainer, { bottom: coinsBottomOffset }]}>
         <PullToCast
           onRelease={handleThrowCoins}
           isDisabled={shouldAnimate || isThrowingCoins || isComplete}
@@ -371,15 +411,29 @@ const CastingScreen: React.FC = () => {
           onPress={handleSkipAnimation}
         />
       )}
-      </View>
+      </BackgroundTexture>
     </TouchableWithoutFeedback>
+
+    {/* Keyboard accessory view with Done button */}
+    {Platform.OS === 'ios' && (
+      <InputAccessoryView nativeID={INPUT_ACCESSORY_VIEW_ID}>
+        <View style={styles.inputAccessory}>
+          <View style={styles.inputAccessorySpacer} />
+          <TouchableOpacity
+            style={styles.inputAccessoryButton}
+            onPress={Keyboard.dismiss}
+          >
+            <Text style={styles.inputAccessoryButtonText}>Done</Text>
+          </TouchableOpacity>
+        </View>
+      </InputAccessoryView>
+    )}
+    </>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
     paddingTop: 80,
     paddingHorizontal: spacing.lg,
     position: 'relative',  // Create positioning context for absolute children
@@ -390,7 +444,6 @@ const styles = StyleSheet.create({
   },
   absoluteCoinsContainer: {
     position: 'absolute',
-    bottom: 100,             // Fixed distance from bottom for consistent positioning
     left: 0,
     right: 0,
     height: 300,             // Fixed height for gesture area + coins
@@ -411,32 +464,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topBar: {
-    position: 'absolute',
-    top: 60,
-    right: spacing.lg,
-    zIndex: 100,
+  startOverButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
-  resetButtonTop: {
-    backgroundColor: colors.background.tertiary,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    borderRadius: 12,
-    // Premium shadow
-    shadowColor: colors.shadow.md,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-    // Refined border
-    borderWidth: 1,
-    borderColor: colors.accent.subtle,
-  },
-  resetButtonText: {
+  startOverText: {
     fontSize: typography.fontSize.sm,
-    fontWeight: typography.fontWeight.semibold,
-    color: colors.text.secondary,
-    letterSpacing: typography.letterSpacing.wide,
+    fontFamily: typography.fontFamily.text,
+    fontWeight: typography.fontWeight.regular,
+    color: colors.text.tertiary,
+    textAlign: 'center',
+    textDecorationLine: 'underline',
+    opacity: 0.8,
   },
   statusContainer: {
     alignItems: 'center',
@@ -467,7 +507,6 @@ const styles = StyleSheet.create({
     height: 240,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
   },
   hexagramLabel: {
     fontSize: typography.fontSize.sm,
@@ -544,10 +583,11 @@ const styles = StyleSheet.create({
   },
   questionInput: {
     width: '100%',
-    minHeight: 90,
+    minHeight: 48,
     backgroundColor: colors.background.tertiary,
     borderRadius: 14,
-    padding: spacing.base,
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
     fontSize: typography.fontSize.md,
     fontFamily: typography.fontFamily.text,
     color: colors.text.primary,
@@ -580,6 +620,28 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     zIndex: 1000, // Above everything else
+  },
+  inputAccessory: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.background.secondary,
+    borderTopWidth: 1,
+    borderTopColor: colors.accent.subtle,
+  },
+  inputAccessorySpacer: {
+    flex: 1,
+  },
+  inputAccessoryButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  inputAccessoryButtonText: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.text,
+    fontWeight: typography.fontWeight.semibold,
+    color: '#007AFF', // iOS blue
   },
 });
 

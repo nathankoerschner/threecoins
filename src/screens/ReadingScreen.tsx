@@ -7,6 +7,7 @@ import { ReadingHeader } from '@/components/reading/ReadingHeader';
 import { TransformationIndicator } from '@/components/reading/TransformationIndicator';
 import { HexagramPair } from '@/components/reading/HexagramPair';
 import { AIInterpretation } from '@/components/reading/AIInterpretation';
+import { BackgroundTexture } from '@/components/layout/BackgroundTexture';
 import { colors, typography, spacing } from '@/theme';
 
 type ReadingScreenRouteProp = RouteProp<RootStackParamList, 'Reading'>;
@@ -23,8 +24,16 @@ const ReadingScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleNewReading = () => {
+    // Reset navigation stack to a fresh CastingScreen with reset flag
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Casting', params: { shouldReset: true } }],
+    });
+  };
+
   return (
-    <View style={styles.container}>
+    <BackgroundTexture>
       {/* Close button in top right */}
       <TouchableOpacity style={styles.closeButton} onPress={handleDismiss}>
         <Text style={styles.closeButtonText}>✕</Text>
@@ -46,7 +55,7 @@ const ReadingScreen: React.FC = () => {
 
           {/* Transformation indicator */}
           {hasChangingLines && reading.transformed && (
-            <TransformationIndicator changingLines={reading.changingLines} />
+            <TransformationIndicator />
           )}
 
           {/* AI Interpretation */}
@@ -56,19 +65,23 @@ const ReadingScreen: React.FC = () => {
             changingLines={reading.changingLines}
             question={question}
           />
+
+          {/* New Reading button */}
+          <TouchableOpacity
+            style={styles.newReadingButton}
+            onPress={handleNewReading}
+          >
+            <Text style={styles.newReadingButtonText}>New Reading</Text>
+          </TouchableOpacity>
         </ScrollView>
-      </View>
+      </BackgroundTexture>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
   closeButton: {
     position: 'absolute',
-    top: 60,
+    top: spacing.xl,
     right: spacing.lg,
     zIndex: 100,
     width: 36,
@@ -104,6 +117,36 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingTop: 60,
     paddingBottom: spacing.xxxl,
+  },
+  newReadingButton: {
+    backgroundColor: colors.accent.primary,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.base,
+    borderRadius: 14,
+    alignSelf: 'center',
+    marginTop: spacing.xxl,
+    marginBottom: spacing.lg,
+    // Premium gold shadow with glow
+    shadowColor: colors.accent.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
+    elevation: 8,
+    // Refined border
+    borderWidth: 1,
+    borderColor: colors.accent.light,
+  },
+  newReadingButtonText: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.display,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.background.primary,
+    textAlign: 'center',
+    letterSpacing: typography.letterSpacing.wide,
+    // Subtle embossed effect
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1,
   },
 });
 

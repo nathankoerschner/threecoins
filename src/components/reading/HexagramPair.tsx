@@ -1,8 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { HexagramDisplay } from '@/components/hexagram/HexagramDisplay';
+import { HexagramDetailsDrawer } from '@/components/hexagram/HexagramDetailsDrawer';
 import { Hexagram, CastLine } from '@/types';
 import { colors, typography, spacing } from '@/theme';
+
+const getChangingLineNumbers = (lines: CastLine[]): number[] =>
+  lines
+    .map((line, index) => (line.isChanging ? index + 1 : null))
+    .filter((n): n is number => n !== null);
 
 interface HexagramPairProps {
   primary: Hexagram;
@@ -32,6 +38,10 @@ export const HexagramPair: React.FC<HexagramPairProps> = ({
             showMetadata={true}
             size="large"
           />
+          <HexagramDetailsDrawer
+            hexagramNumber={primary.number}
+            changingLines={getChangingLineNumbers(primaryLines)}
+          />
         </View>
       </View>
 
@@ -46,6 +56,7 @@ export const HexagramPair: React.FC<HexagramPairProps> = ({
               showMetadata={true}
               size="large"
             />
+            <HexagramDetailsDrawer hexagramNumber={transformed.number} />
           </View>
         </View>
       )}

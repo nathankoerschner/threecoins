@@ -15,8 +15,8 @@ import { colors, typography, spacing } from '@/theme';
 import { PullDirection } from '@/types';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
-const PULL_THRESHOLD_VERTICAL = 150; // Distance to pull vertically before triggering
-const PULL_THRESHOLD_HORIZONTAL = 60; // Distance to pull horizontally before triggering
+const PULL_THRESHOLD_VERTICAL = 40; // Distance to pull vertically before triggering
+const PULL_THRESHOLD_HORIZONTAL = 40; // Distance to pull horizontally before triggering
 const MAX_PULL = 200; // Maximum pull distance (rubber band limit)
 
 interface PullToCastProps {

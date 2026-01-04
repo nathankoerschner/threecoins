@@ -10,6 +10,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { BackgroundTexture } from '@/components/layout/BackgroundTexture';
 import { colors, typography, spacing } from '@/theme';
 import { useAuth } from '@/context/AuthContext';
 import { SUBSCRIPTION_DETAILS, CREDIT_PACK_DETAILS } from '@/constants/products';
@@ -62,7 +63,7 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) =>
   };
 
   return (
-    <View style={styles.container}>
+    <BackgroundTexture>
       {/* Close button */}
       <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()}>
         <Text style={styles.closeButtonText}>✕</Text>
@@ -146,15 +147,11 @@ const PaywallScreen: React.FC<PaywallScreenProps> = ({ nextFreeReadingTime }) =>
           Subscriptions auto-renew unless cancelled.
         </Text>
       </ScrollView>
-    </View>
+    </BackgroundTexture>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background.primary,
-  },
   closeButton: {
     position: 'absolute',
     top: 60,
