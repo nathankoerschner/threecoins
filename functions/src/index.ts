@@ -20,21 +20,6 @@ const getOpenAI = () => {
   return new OpenAI({ apiKey });
 };
 
-// System prompt for I Ching interpretations
-const SYSTEM_PROMPT = '';
-
-// `Interpret this I Ching reading in a natural, conversational way. Talk like a friend
-// who happens to know the I Ching well, not like a mystical oracle.
-//
-// Cover what matters:
-// - What's going on in their situation right now
-// - What the changing lines (if any) suggest about where things are headed
-// - Practical advice they can actually use
-//
-// Write naturally. Don't follow a formula. Use everyday language and real examples when they help.
-// If they asked a specific question, focus on that. If not, read what the hexagrams suggest.
-//
-// Keep it 150-200 words. Be direct and helpful.`;
 
 interface InterpretationRequest {
   primaryHexagram: {
@@ -141,14 +126,11 @@ export const generateInterpretation = functions
       // Stream OpenAI response
       const openai = getOpenAI();
       const stream = await openai.chat.completions.create({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-5.2',
         messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: userPrompt },
         ],
         stream: true,
-        max_tokens: 800,
-        temperature: 0.7,
       });
 
       // Process stream chunks

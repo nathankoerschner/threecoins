@@ -1,7 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import Markdown from 'react-native-markdown-display';
 import { useAuth } from '@/context/AuthContext';
-import { requestInterpretationWithRetry, subscribeToInterpretation } from '@/services/ai';
+import { useCastingContext } from '@/context/CastingContext';
+import { startInterpretationStreaming, subscribeToInterpretation } from '@/services/ai';
 import { Hexagram } from '@/types';
 import { colors, typography, spacing } from '@/theme';
 
@@ -19,63 +21,180 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
   question,
 }) => {
   const { user } = useAuth();
-  const [content, setContent] = useState<string>('');
-  const [status, setStatus] = useState<'loading' | 'streaming' | 'complete' | 'error'>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const { cachedInterpretation, setCachedInterpretation } = useCastingContext();
   const unsubscribeRef = useRef<(() => void) | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Use cached interpretation if available, otherwise use default states
+  const content = cachedInterpretation?.content ?? '';
+  const status = cachedInterpretation?.status ?? 'loading';
+  const error = cachedInterpretation?.error ?? null;
 
   useEffect(() => {
     if (!user) {
-      setError('User not authenticated');
-      setStatus('error');
+      if (!cachedInterpretation) {
+        setCachedInterpretation({
+          content: '',
+          status: 'error',
+          readingId: '',
+          error: 'User not authenticated',
+        });
+      }
       return;
     }
 
-    const startInterpretation = async () => {
-      try {
-        setStatus('loading');
-        setError(null);
+    // If interpretation is complete or errored, nothing to do
+    if (cachedInterpretation?.status === 'complete' || cachedInterpretation?.status === 'error') {
+      return;
+    }
 
-        // Request interpretation with retry
-        const readingId = await requestInterpretationWithRetry(
-          primaryHexagram,
-          relatingHexagram,
-          changingLines,
-          question,
-          user.uid
-        );
+    // If we're streaming and have a readingId, resubscribe to continue receiving updates
+    if (cachedInterpretation?.status === 'streaming' && cachedInterpretation.readingId) {
+      const unsubscribe = subscribeToInterpretation(
+        user.uid,
+        cachedInterpretation.readingId,
+        (newContent, newStatus) => {
+          setCachedInterpretation({
+            content: newContent,
+            status: newStatus === 'complete' ? 'complete' : 'streaming',
+            readingId: cachedInterpretation.readingId,
+          });
+        },
+        (errorMessage) => {
+          setCachedInterpretation({
+            content: cachedInterpretation.content,
+            status: 'error',
+            readingId: cachedInterpretation.readingId,
+            error: errorMessage,
+          });
+        }
+      );
 
-        // Subscribe to streaming updates
-        const unsubscribe = subscribeToInterpretation(
-          user.uid,
-          readingId,
-          (newContent, newStatus) => {
-            setContent(newContent);
-            setStatus(newStatus === 'complete' ? 'complete' : 'streaming');
-          },
-          (errorMessage) => {
-            setError(errorMessage);
-            setStatus('error');
+      unsubscribeRef.current = unsubscribe;
+
+      return () => {
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+      };
+    }
+
+    // If we're loading with a readingId (e.g., StrictMode remount), resubscribe
+    if (cachedInterpretation?.status === 'loading' && cachedInterpretation.readingId) {
+      const unsubscribe = subscribeToInterpretation(
+        user.uid,
+        cachedInterpretation.readingId,
+        (newContent, newStatus) => {
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
           }
-        );
+          setCachedInterpretation({
+            content: newContent,
+            status: newStatus === 'complete' ? 'complete' : 'streaming',
+            readingId: cachedInterpretation.readingId,
+          });
+        },
+        (errorMessage) => {
+          if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+          }
+          setCachedInterpretation({
+            content: '',
+            status: 'error',
+            readingId: cachedInterpretation.readingId,
+            error: errorMessage,
+          });
+        }
+      );
 
-        unsubscribeRef.current = unsubscribe;
-      } catch (err: any) {
-        console.error('Failed to start interpretation:', err);
-        setError(err.message || 'Failed to generate interpretation');
-        setStatus('error');
+      unsubscribeRef.current = unsubscribe;
+
+      return () => {
+        if (unsubscribeRef.current) {
+          unsubscribeRef.current();
+          unsubscribeRef.current = null;
+        }
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+      };
+    }
+
+    // No cached interpretation - start fresh
+    const readingId = startInterpretationStreaming(
+      primaryHexagram,
+      relatingHexagram,
+      changingLines,
+      question,
+      user.uid
+    );
+
+    // Set initial loading state
+    setCachedInterpretation({
+      content: '',
+      status: 'loading',
+      readingId,
+    });
+
+    // Set timeout fallback - if no updates within 10 seconds, show error
+    timeoutRef.current = setTimeout(() => {
+      setCachedInterpretation({
+        content: '',
+        status: 'error',
+        readingId,
+        error: 'Request timed out. Please try again.',
+      });
+    }, 10000);
+
+    // Subscribe to streaming updates IMMEDIATELY (before Cloud Function writes)
+    const unsubscribe = subscribeToInterpretation(
+      user.uid,
+      readingId,
+      (newContent, newStatus) => {
+        // Clear timeout on first successful update
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setCachedInterpretation({
+          content: newContent,
+          status: newStatus === 'complete' ? 'complete' : 'streaming',
+          readingId,
+        });
+      },
+      (errorMessage) => {
+        // Clear timeout on error
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
+        }
+        setCachedInterpretation({
+          content: '',
+          status: 'error',
+          readingId,
+          error: errorMessage,
+        });
       }
-    };
+    );
 
-    startInterpretation();
+    unsubscribeRef.current = unsubscribe;
 
-    // Cleanup subscription on unmount
+    // Cleanup subscription and timeout on unmount
     return () => {
       if (unsubscribeRef.current) {
         unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, [user, primaryHexagram, relatingHexagram, changingLines, question]);
+  }, [user, cachedInterpretation?.status, cachedInterpretation?.readingId]); // Re-run when status changes to handle resubscription
 
   // Render loading state
   if (status === 'loading') {
@@ -108,7 +227,7 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
     <View style={styles.container}>
       <Text style={styles.title}>Interpretation</Text>
       <View style={styles.contentContainer}>
-        <Text style={styles.content}>{content}</Text>
+        <Markdown style={markdownStyles}>{content}</Markdown>
         {status === 'streaming' && (
           <View style={styles.streamingIndicator}>
             <Text style={styles.streamingDot}>●</Text>
@@ -210,3 +329,75 @@ const styles = StyleSheet.create({
     letterSpacing: typography.letterSpacing.normal,
   },
 });
+
+const markdownStyles = {
+  body: {
+    fontSize: typography.fontSize.md,
+    fontFamily: typography.fontFamily.text,
+    color: colors.text.primary,
+    lineHeight: typography.fontSize.md * 1.7,
+  },
+  heading1: {
+    fontSize: typography.fontSize.xxl,
+    fontFamily: typography.fontFamily.display,
+    fontWeight: typography.fontWeight.bold,
+    color: colors.accent.primary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  heading2: {
+    fontSize: typography.fontSize.xl,
+    fontFamily: typography.fontFamily.display,
+    fontWeight: typography.fontWeight.semibold,
+    color: colors.accent.light,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
+  heading3: {
+    fontSize: typography.fontSize.lg,
+    fontFamily: typography.fontFamily.display,
+    fontWeight: typography.fontWeight.medium,
+    color: colors.text.primary,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+  },
+  paragraph: {
+    marginBottom: spacing.md,
+  },
+  strong: {
+    fontWeight: typography.fontWeight.bold,
+    color: colors.accent.light,
+  },
+  em: {
+    fontStyle: 'italic' as const,
+  },
+  bullet_list: {
+    marginBottom: spacing.md,
+  },
+  ordered_list: {
+    marginBottom: spacing.md,
+  },
+  list_item: {
+    marginBottom: spacing.xs,
+  },
+  blockquote: {
+    backgroundColor: colors.background.secondary,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent.primary,
+    paddingLeft: spacing.md,
+    paddingVertical: spacing.sm,
+    marginVertical: spacing.sm,
+    fontStyle: 'italic' as const,
+  },
+  code_inline: {
+    backgroundColor: colors.background.secondary,
+    fontFamily: 'monospace',
+    paddingHorizontal: spacing.xs,
+    borderRadius: 4,
+  },
+  hr: {
+    backgroundColor: colors.accent.subtle,
+    height: 1,
+    marginVertical: spacing.md,
+  },
+};

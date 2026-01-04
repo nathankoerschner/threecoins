@@ -6,12 +6,21 @@ import { createCastLine } from '@/utils/lineCalculator';
 
 const STORAGE_KEY = '@iching_casting_state';
 
+export interface CachedInterpretation {
+  content: string;
+  status: 'loading' | 'streaming' | 'complete' | 'error';
+  readingId: string;
+  error?: string;
+}
+
 interface CastingContextType {
   castingState: CastingState;
   throwCoins: () => void;
   resetCasting: () => void;
   isAnimating: boolean;
   setIsAnimating: (animating: boolean) => void;
+  cachedInterpretation: CachedInterpretation | null;
+  setCachedInterpretation: (interpretation: CachedInterpretation | null) => void;
 }
 
 const CastingContext = createContext<CastingContextType | undefined>(undefined);
@@ -30,6 +39,7 @@ interface CastingProviderProps {
 export const CastingProvider: React.FC<CastingProviderProps> = ({ children }) => {
   const [castingState, setCastingState] = useState<CastingState>(initialState);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [cachedInterpretation, setCachedInterpretation] = useState<CachedInterpretation | null>(null);
 
   // Load saved state on mount
   useEffect(() => {
@@ -111,6 +121,7 @@ export const CastingProvider: React.FC<CastingProviderProps> = ({ children }) =>
       timestamp: Date.now(),
     });
     setIsAnimating(false);
+    setCachedInterpretation(null);
     clearSavedState();
   };
 
@@ -120,6 +131,8 @@ export const CastingProvider: React.FC<CastingProviderProps> = ({ children }) =>
     resetCasting,
     isAnimating,
     setIsAnimating,
+    cachedInterpretation,
+    setCachedInterpretation,
   };
 
   return <CastingContext.Provider value={value}>{children}</CastingContext.Provider>;

@@ -38,7 +38,7 @@ export const generateReadingId = (): string => {
   return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 };
 
-// Call Cloud Function to start interpretation generation
+// Call Cloud Function to start interpretation generation (legacy - waits for completion)
 export const requestInterpretation = async (
   primaryHexagram: Hexagram,
   relatingHexagram: Hexagram | null,
@@ -81,6 +81,45 @@ export const requestInterpretation = async (
     console.error('Error requesting interpretation:', error);
     throw new Error(error.message || 'Failed to request interpretation');
   }
+};
+
+// Start interpretation and return readingId immediately (enables true streaming)
+export const startInterpretationStreaming = (
+  primaryHexagram: Hexagram,
+  relatingHexagram: Hexagram | null,
+  changingLines: number[],
+  question: string | undefined,
+  userId: string
+): string => {
+  const readingId = generateReadingId();
+
+  const requestData: InterpretationRequestData = {
+    primaryHexagram: {
+      number: primaryHexagram.number,
+      englishName: primaryHexagram.englishName,
+      chineseName: primaryHexagram.chineseName,
+    },
+    relatingHexagram: relatingHexagram ? {
+      number: relatingHexagram.number,
+      englishName: relatingHexagram.englishName,
+      chineseName: relatingHexagram.chineseName,
+    } : null,
+    changingLines,
+    question,
+    readingId,
+  };
+
+  const generateInterpretation = httpsCallable<InterpretationRequestData, InterpretationResponse>(
+    functions,
+    'generateInterpretation'
+  );
+
+  // Fire Cloud Function without awaiting - errors will be reflected in RTDB status
+  generateInterpretation(requestData).catch(err => {
+    console.error('Cloud function error (will be reflected in RTDB):', err);
+  });
+
+  return readingId;
 };
 
 // Subscribe to streaming interpretation updates
