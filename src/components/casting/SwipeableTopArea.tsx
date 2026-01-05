@@ -44,25 +44,27 @@ export const SwipeableTopArea: React.FC<SwipeableTopAreaProps> = ({
       const velocity = event.velocityX;
       const translation = event.translationX;
 
+      // Determine the current screen based on start position (snap to nearest valid position)
+      const currentScreen = startTranslateX.value < -SCREEN_WIDTH / 2 ? -SCREEN_WIDTH : 0;
+
       // Determine which screen to snap to
-      let targetX = 0;
+      let targetX = currentScreen;
 
       // Check if swipe threshold met
       if (translation < -SWIPE_THRESHOLD || velocity < -500) {
         // Swiped left with sufficient distance or velocity
         targetX = -SCREEN_WIDTH;
-        runOnJS(onSwipeRight)(); // Swipe left shows right screen (hexagram)
+        if (currentScreen !== -SCREEN_WIDTH) {
+          runOnJS(onSwipeRight)(); // Swipe left shows right screen (hexagram)
+        }
       } else if (translation > SWIPE_THRESHOLD || velocity > 500) {
         // Swiped right with sufficient distance or velocity
         targetX = 0;
-        runOnJS(onSwipeLeft)();
-      } else {
-        // Snap back to current screen
-        targetX = startTranslateX.value;
+        if (currentScreen !== 0) {
+          runOnJS(onSwipeLeft)();
+        }
       }
-
-      // Clamp to valid positions (0 or -screenWidth)
-      targetX = Math.max(-SCREEN_WIDTH, Math.min(0, targetX));
+      // If neither threshold met, targetX stays at currentScreen (already snapped to valid position)
 
       // Animate to target position
       currentTranslateX.value = withTiming(targetX, {

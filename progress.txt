@@ -1,3 +1,23 @@
+## 2026-01-05: Fix Carousel Scroll Jumping/Jitter
+
+### Status
+Complete - carousel now snaps cleanly to valid positions without jumping.
+
+### Changes
+- Modified `src/components/casting/SwipeableTopArea.tsx` to fix the snap-back behavior
+- Previously, when a swipe didn't meet the threshold, it would snap back to `startTranslateX.value` which could be an intermediate position if the gesture started mid-animation
+- Now, the code calculates the nearest valid screen position (0 or -SCREEN_WIDTH) based on whether the start position was past the midpoint
+- This ensures the carousel always snaps to a clean position even when gestures overlap with animations
+
+### Technical Details
+- Added `currentScreen` calculation using midpoint threshold: `startTranslateX.value < -SCREEN_WIDTH / 2 ? -SCREEN_WIDTH : 0`
+- Removed the clamping logic that was redundant since targetX is now always a valid snap point
+- Also added guards to only call onSwipeLeft/onSwipeRight callbacks when actually changing screens
+
+### Notes
+- The "coins" in the bug report refers to the swipeable carousel between question/hexagram views
+- Tests pass, TypeScript compiles without errors
+
 ## 2026-01-05: Center Magnified Hexagram on Screen
 
 ### Status

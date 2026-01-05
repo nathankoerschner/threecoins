@@ -7,7 +7,7 @@
       "Scroll coins far to the left",
       "Verify no jumping or jitter occurs during scrolling"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "ui",
