@@ -55,3 +55,24 @@ Complete - deployed to production.
 ### Notes
 - Simple one-line change to the prompt
 - Functions deployed successfully to Firebase
+
+## 2026-01-05: Replace Underlined Text with Sleek Styling
+
+### Status
+Complete - underlined text replaced with refined styling.
+
+### Changes
+- Modified `src/screens/CastingScreen.tsx` - "Start Over" text link styling
+- Modified `src/screens/PaywallScreen.tsx` - "Restore Purchases" button text styling
+- Removed `textDecorationLine: 'underline'` from both components
+- Added `fontWeight: typography.fontWeight.medium` for subtle emphasis
+- Added `letterSpacing: typography.letterSpacing.wide` for a more premium, refined look
+
+### Technical Details
+- The medium font weight (500) provides visual distinction without being heavy
+- Wide letter spacing (0.3) gives the text a sophisticated, premium feel that matches the app's gold accent design system
+- Both changes align with the app's award-winning dark theme aesthetic
+
+### Notes
+- Only 2 instances of underlined text existed in the codebase
+- Tests pass, TypeScript compiles without errors

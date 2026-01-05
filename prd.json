@@ -47,6 +47,6 @@
       "Verify underlines are removed",
       "Verify replacement styling looks sleek and consistent"
     ],
-    "passes": false
+    "passes": true
   }
 ]

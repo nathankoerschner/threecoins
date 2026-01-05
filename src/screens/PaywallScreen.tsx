@@ -293,7 +293,8 @@ const styles = StyleSheet.create({
   restoreButtonText: {
     fontSize: typography.fontSize.sm,
     color: colors.text.secondary,
-    textDecorationLine: 'underline',
+    fontWeight: typography.fontWeight.medium,
+    letterSpacing: typography.letterSpacing.wide,
   },
   footerText: {
     fontSize: typography.fontSize.xs,

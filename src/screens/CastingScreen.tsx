@@ -564,10 +564,10 @@ const styles = StyleSheet.create({
   startOverText: {
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.text,
-    fontWeight: typography.fontWeight.regular,
+    fontWeight: typography.fontWeight.medium,
     color: colors.text.tertiary,
     textAlign: 'center',
-    textDecorationLine: 'underline',
+    letterSpacing: typography.letterSpacing.wide,
     opacity: 0.8,
   },
   statusContainer: {
