@@ -17,8 +17,7 @@
       "Observe the text as it streams in",
       "Verify words appear smoothly without choppy transitions"
     ],
-    "passes": true,
-    "implementation_notes": "Added buffered text streaming with 50ms interval. Characters are revealed progressively (3-N chars per tick based on backlog) instead of direct Firebase updates. Applied to both AIInterpretation and ReadingChat components."
+    "passes": true
   },
   {
     "category": "ui",
