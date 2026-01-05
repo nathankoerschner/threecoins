@@ -30,6 +30,7 @@ const ReadingScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { reading, question } = route.params;
 
+
   const hasChangingLines = reading.changingLines.length > 0;
 
   // State for chat feature
@@ -69,13 +70,12 @@ const ReadingScreen: React.FC = () => {
 
   return (
     <BackgroundTexture>
-      {/* New Reading button in top left */}
-      <TouchableOpacity style={[styles.newReadingButton, { top: insets.top - 50 }]} onPress={handleNewReading}>
-        <Text style={styles.newReadingButtonText}>New Reading</Text>
-      </TouchableOpacity>
-
-      {/* Close button in top right */}
-      <TouchableOpacity style={[styles.closeButton, { top: insets.top - 50 }]} onPress={handleDismiss}>
+      {/* Close button - positioned with equal spacing from top and right */}
+      <TouchableOpacity
+        style={[styles.closeButton, { top: insets.top + spacing.md }]}
+        onPress={handleDismiss}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
 
@@ -132,38 +132,29 @@ const ReadingScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  keyboardAvoidingView: {
-    flex: 1,
-  },
   closeButton: {
     position: 'absolute',
-    right: spacing.lg,
-    zIndex: 100,
+    right: spacing.md,
+    zIndex: 10,
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: colors.accent.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    // Premium shadow with gold glow
     shadowColor: colors.accent.primary,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-    // Refined border
-    borderWidth: 1,
-    borderColor: colors.accent.light,
+    shadowRadius: 4,
+    elevation: 4,
   },
   closeButtonText: {
-    fontSize: 22,
+    fontSize: 20,
     color: colors.background.primary,
-    fontWeight: typography.fontWeight.heavy,
-    lineHeight: 22,
-    // Subtle embossed effect
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
+    fontWeight: typography.fontWeight.bold,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -171,36 +162,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     padding: spacing.lg,
     paddingBottom: spacing.xxxl,
-  },
-  newReadingButton: {
-    position: 'absolute',
-    left: spacing.lg,
-    zIndex: 100,
-    backgroundColor: colors.accent.primary,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 14,
-    // Premium gold shadow with glow
-    shadowColor: colors.accent.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 6,
-    // Refined border
-    borderWidth: 1,
-    borderColor: colors.accent.light,
-  },
-  newReadingButtonText: {
-    fontSize: typography.fontSize.md,
-    fontFamily: typography.fontFamily.display,
-    fontWeight: typography.fontWeight.bold,
-    color: colors.background.primary,
-    textAlign: 'center',
-    letterSpacing: typography.letterSpacing.wide,
-    // Subtle embossed effect
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1,
   },
 });
 

@@ -51,7 +51,7 @@ const CastingScreen: React.FC = () => {
   const screenWidth = Dimensions.get('window').width; // Get screen width for translation
   const screenHeight = Dimensions.get('window').height;
   const hexagramTopMargin = Math.round(
-    screenHeight * (screenHeight >= 800 ? 0.1 : 0.03)
+    screenHeight * (screenHeight >= 800 ? 0.1 : 0.08)
   );
   const coinsBottomOffset = screenHeight <= 700 ? 60 : 100;
   const carouselTranslateX = useSharedValue(0); // Animated translateX for carousel
@@ -82,20 +82,13 @@ const CastingScreen: React.FC = () => {
         easing: Easing.inOut(Easing.ease),
       }));
 
-      // Calculate center offset (move hexagram to vertical center)
-      const hexagramCurrentY = hexagramTopMargin + 90; // Approximate center of hexagram
-      const screenCenterY = screenHeight / 2.5 - 100;    // Account for status bar
-      const centerOffset = screenCenterY - hexagramCurrentY;
-
-      // Enlarge hexagram after coins start sliding (delay = 400 + 300 = 700ms)
-      hexagramScale.value = withDelay(700, withTiming(1.4, {
+      // Enlarge hexagram in place (no vertical translation to avoid overlapping top bar)
+      hexagramScale.value = withDelay(700, withTiming(1.2, {
         duration: 500,
         easing: Easing.out(Easing.ease),
       }));
-      hexagramTranslateY.value = withDelay(700, withTiming(centerOffset, {
-        duration: 500,
-        easing: Easing.out(Easing.ease),
-      }));
+      // Keep hexagram in place - no vertical translation
+      hexagramTranslateY.value = 0;
     } else if (!isComplete) {
       // Reset only when starting fresh (not when visibleLineCount is just updating)
       glowOpacity.value = 0;
@@ -522,7 +515,7 @@ const CastingScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: 80,
+    paddingTop: 60,
     paddingHorizontal: spacing.lg,
     position: 'relative',  // Create positioning context for absolute children
   },

@@ -3,6 +3,7 @@
 import { Reading } from '@/types';
 
 export type RootStackParamList = {
+  Introduction: undefined;
   Casting: {
     shouldReset?: boolean;
   } | undefined;
