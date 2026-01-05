@@ -20,11 +20,12 @@ interface HexagramLineProps {
 }
 
 const LINE_WIDTH = 200;
-const LINE_HEIGHT = 8;
-const LINE_SPACING = 16;
-const BROKEN_GAP_WIDTH = 40;
+const LINE_HEIGHT = 24;
+const LINE_SPACING = 24;
+const BROKEN_GAP_WIDTH = 32;
+const GLOW_PADDING = 12;
 
-const SEGMENT_WIDTH = (LINE_WIDTH - BROKEN_GAP_WIDTH) / 2;
+const SEGMENT_WIDTH = (LINE_WIDTH - BROKEN_GAP_WIDTH) / 2; // 84px each
 
 export const HexagramLine: React.FC<HexagramLineProps> = ({
   lineType,
@@ -51,8 +52,8 @@ export const HexagramLine: React.FC<HexagramLineProps> = ({
       });
 
       // Draw-in animation: left to right by animating width
-      // Width includes the line plus glow padding (8px)
-      width.value = withTiming(LINE_WIDTH + 8, {
+      // Width includes the line plus glow padding
+      width.value = withTiming(LINE_WIDTH + GLOW_PADDING, {
         duration: 400,
         easing: Easing.out(Easing.ease),
         // @ts-ignore - delay is supported but types don't show it
@@ -60,7 +61,7 @@ export const HexagramLine: React.FC<HexagramLineProps> = ({
       });
     } else {
       lineOpacity.value = 1;
-      width.value = LINE_WIDTH + 8;
+      width.value = LINE_WIDTH + GLOW_PADDING;
     }
 
     // Glow pulse animation
@@ -120,14 +121,14 @@ export const HexagramLine: React.FC<HexagramLineProps> = ({
               <Animated.View
                 style={[
                   styles.brokenGlow,
-                  { left: 0, width: SEGMENT_WIDTH + 8 },
+                  { left: 0, width: SEGMENT_WIDTH + GLOW_PADDING },
                   animatedGlowStyle,
                 ]}
               />
               <Animated.View
                 style={[
                   styles.brokenGlow,
-                  { left: SEGMENT_WIDTH + BROKEN_GAP_WIDTH, width: SEGMENT_WIDTH + 8 },
+                  { left: SEGMENT_WIDTH + BROKEN_GAP_WIDTH, width: SEGMENT_WIDTH + GLOW_PADDING },
                   animatedGlowStyle,
                 ]}
               />
@@ -147,59 +148,59 @@ export const HexagramLine: React.FC<HexagramLineProps> = ({
 const styles = StyleSheet.create({
   lineContainer: {
     width: LINE_WIDTH,
-    height: LINE_HEIGHT, // Keep original height for proper spacing
+    height: LINE_HEIGHT,
     marginVertical: LINE_SPACING / 2,
     justifyContent: 'center',
-    alignItems: 'flex-start', // Keep left-aligned for animation
+    alignItems: 'flex-start',
   },
   animatedWrapper: {
-    overflow: 'hidden', // Clips both line and glow together
+    overflow: 'hidden',
     position: 'relative',
-    height: LINE_HEIGHT + 8,
-    marginLeft: -4, // Shift left by 4px to center the lines
+    height: LINE_HEIGHT + GLOW_PADDING,
+    marginLeft: -GLOW_PADDING / 2,
   },
   solidLine: {
     width: LINE_WIDTH,
     height: LINE_HEIGHT,
-    borderRadius: 2,
+    borderRadius: 4,
     position: 'absolute',
-    top: 4, // Center in wrapper
-    left: 4, // Offset for glow padding
+    top: GLOW_PADDING / 2,
+    left: GLOW_PADDING / 2,
   },
   solidGlow: {
     position: 'absolute',
     top: 0,
     left: 0,
-    width: LINE_WIDTH + 8,
-    height: LINE_HEIGHT + 8,
+    width: LINE_WIDTH + GLOW_PADDING,
+    height: LINE_HEIGHT + GLOW_PADDING,
     backgroundColor: colors.accent.glow,
-    borderRadius: 4,
+    borderRadius: 6,
     shadowColor: colors.accent.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
   },
   brokenLineSegment: {
     flexDirection: 'row',
     alignItems: 'center',
     position: 'absolute',
-    top: 4, // Center in wrapper
-    left: 4, // Offset for glow padding
+    top: GLOW_PADDING / 2,
+    left: GLOW_PADDING / 2,
   },
   brokenSegment: {
     width: SEGMENT_WIDTH,
     height: LINE_HEIGHT,
-    borderRadius: 2,
+    borderRadius: 4,
   },
   brokenGlow: {
     position: 'absolute',
     top: 0,
-    height: LINE_HEIGHT + 8,
+    height: LINE_HEIGHT + GLOW_PADDING,
     backgroundColor: colors.accent.glow,
-    borderRadius: 4,
+    borderRadius: 6,
     shadowColor: colors.accent.primary,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
-    shadowRadius: 4,
+    shadowRadius: 6,
   },
 });

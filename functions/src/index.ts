@@ -4,9 +4,11 @@ import OpenAI from 'openai';
 import { logError } from './logger';
 import {
   buildUserPrompt,
+  buildChatSystemPrompt,
   canUseFreeReading,
   isQuestionTooLong,
   UserData,
+  ReadingContext,
 } from './helpers';
 
 // Initialize Firebase Admin
@@ -123,7 +125,7 @@ export const generateInterpretation = functions
           { role: 'user', content: userPrompt },
         ],
         stream: true,
-        max_completion_tokens: 1500, // ~6000 characters, ensures consistent response length for UI sizing
+        max_completion_tokens: 1500, // ~6000 characters
       });
 
       // Process stream chunks
@@ -277,5 +279,157 @@ export const moderateQuestion = functions
       return {
         approved: true,
       };
+    }
+  });
+
+// Chat message type
+interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+// Chat request interface
+interface ChatRequest {
+  message: string;
+  chatId: string;
+  readingContext: ReadingContext;
+  previousMessages: ChatMessage[];
+}
+
+// Chat about reading function - allows follow-up questions
+export const chatAboutReading = functions
+  .region('us-central1')
+  .runWith({
+    secrets: ['OPENAI_API_KEY'],
+  })
+  .https.onCall(async (data: ChatRequest, context) => {
+    // Ensure user is authenticated
+    if (!context.auth) {
+      throw new functions.https.HttpsError(
+        'unauthenticated',
+        'User must be authenticated to chat.',
+      );
+    }
+
+    const userId = context.auth.uid;
+    const { message, chatId, readingContext, previousMessages } = data;
+
+    try {
+      // Check if user has credits (chat requires credits only - no free reading)
+      const userDoc = await admin
+        .firestore()
+        .collection('users')
+        .doc(userId)
+        .get();
+
+      if (!userDoc.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'User document not found',
+        );
+      }
+
+      const userData = userDoc.data() as UserData;
+
+      if (userData.credits < 1) {
+        throw new functions.https.HttpsError(
+          'permission-denied',
+          'Insufficient credits',
+        );
+      }
+
+      // Create reference to Realtime Database for streaming
+      const rtdbRef = admin.database().ref(`chats/${userId}/${chatId}`);
+
+      // Initialize the chat document
+      await rtdbRef.set({
+        content: '',
+        status: 'streaming',
+        startedAt: admin.database.ServerValue.TIMESTAMP,
+      });
+
+      // Build system prompt with reading context
+      const systemPrompt = buildChatSystemPrompt(readingContext);
+
+      // Build messages array for OpenAI
+      const messages: Array<{
+        role: 'system' | 'user' | 'assistant';
+        content: string;
+      }> = [
+        { role: 'system', content: systemPrompt },
+        ...previousMessages.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+        { role: 'user', content: message },
+      ];
+
+      let fullContent = '';
+
+      // Stream OpenAI response
+      const openai = getOpenAI();
+      const stream = await openai.chat.completions.create({
+        model: 'gpt-5.2',
+        messages,
+        stream: true,
+        max_completion_tokens: 800, // Shorter responses for chat
+      });
+
+      // Process stream chunks
+      for await (const chunk of stream) {
+        const content = chunk.choices[0]?.delta?.content || '';
+        if (content) {
+          fullContent += content;
+          await rtdbRef.update({
+            content: fullContent,
+          });
+        }
+      }
+
+      // Mark as complete
+      await rtdbRef.update({
+        status: 'complete',
+        completedAt: admin.database.ServerValue.TIMESTAMP,
+      });
+
+      // Deduct 1 credit
+      await admin
+        .firestore()
+        .collection('users')
+        .doc(userId)
+        .update({
+          credits: admin.firestore.FieldValue.increment(-1),
+        });
+
+      return {
+        success: true,
+        chatId,
+        message: 'Chat response generated successfully',
+      };
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      logError('Error generating chat response', { error });
+
+      // Update status to error
+      try {
+        await admin.database().ref(`chats/${userId}/${chatId}`).update({
+          status: 'error',
+          error: errorMessage,
+        });
+      } catch (dbError) {
+        logError('Failed to update chat error status', { error: dbError });
+      }
+
+      // Rethrow as Firebase error
+      if (error instanceof functions.https.HttpsError) {
+        throw error;
+      }
+
+      throw new functions.https.HttpsError(
+        'internal',
+        'Failed to generate chat response',
+        errorMessage,
+      );
     }
   });

@@ -1,12 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '@/navigation/types';
 import { ReadingHeader } from '@/components/reading/ReadingHeader';
 import { TransformationIndicator } from '@/components/reading/TransformationIndicator';
 import { HexagramPair } from '@/components/reading/HexagramPair';
 import { AIInterpretation } from '@/components/reading/AIInterpretation';
+import { ReadingChat } from '@/components/reading/ReadingChat';
 import { BackgroundTexture } from '@/components/layout/BackgroundTexture';
 import { colors, typography, spacing } from '@/theme';
 
@@ -16,9 +27,33 @@ type ReadingScreenNavigationProp = NativeStackNavigationProp<RootStackParamList,
 const ReadingScreen: React.FC = () => {
   const navigation = useNavigation<ReadingScreenNavigationProp>();
   const route = useRoute<ReadingScreenRouteProp>();
+  const insets = useSafeAreaInsets();
   const { reading, question } = route.params;
 
   const hasChangingLines = reading.changingLines.length > 0;
+
+  // State for chat feature
+  const [interpretationComplete, setInterpretationComplete] = useState(false);
+  const [interpretationContent, setInterpretationContent] = useState('');
+  const scrollViewRef = useRef<ScrollView>(null);
+
+  const handleInterpretationComplete = useCallback((content: string) => {
+    setInterpretationContent(content);
+    setInterpretationComplete(true);
+  }, []);
+
+  // Scroll to bottom when keyboard opens
+  useEffect(() => {
+    const keyboardDidShow = Keyboard.addListener('keyboardDidShow', () => {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    });
+
+    return () => {
+      keyboardDidShow.remove();
+    };
+  }, []);
 
   const handleDismiss = () => {
     navigation.goBack();
@@ -34,16 +69,28 @@ const ReadingScreen: React.FC = () => {
 
   return (
     <BackgroundTexture>
+      {/* New Reading button in top left */}
+      <TouchableOpacity style={[styles.newReadingButton, { top: insets.top - 50 }]} onPress={handleNewReading}>
+        <Text style={styles.newReadingButtonText}>New Reading</Text>
+      </TouchableOpacity>
+
       {/* Close button in top right */}
-      <TouchableOpacity style={styles.closeButton} onPress={handleDismiss}>
+      <TouchableOpacity style={[styles.closeButton, { top: insets.top - 50 }]} onPress={handleDismiss}>
         <Text style={styles.closeButtonText}>✕</Text>
       </TouchableOpacity>
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
       >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.scrollView}
+          contentContainerStyle={[styles.contentContainer, { paddingTop: insets.top + 44 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <ReadingHeader title="Your Reading" />
 
           <HexagramPair
@@ -64,24 +111,32 @@ const ReadingScreen: React.FC = () => {
             relatingHexagram={reading.transformed}
             changingLines={reading.changingLines}
             question={question}
+            onComplete={handleInterpretationComplete}
           />
 
-          {/* New Reading button */}
-          <TouchableOpacity
-            style={styles.newReadingButton}
-            onPress={handleNewReading}
-          >
-            <Text style={styles.newReadingButtonText}>New Reading</Text>
-          </TouchableOpacity>
+          {/* Chat for follow-up questions */}
+          {interpretationComplete && (
+            <ReadingChat
+              primaryHexagram={reading.primary}
+              relatingHexagram={reading.transformed}
+              changingLines={reading.changingLines}
+              question={question}
+              interpretation={interpretationContent}
+            />
+          )}
+
         </ScrollView>
-      </BackgroundTexture>
+      </KeyboardAvoidingView>
+    </BackgroundTexture>
   );
 };
 
 const styles = StyleSheet.create({
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   closeButton: {
     position: 'absolute',
-    top: spacing.xl,
     right: spacing.lg,
     zIndex: 100,
     width: 36,
@@ -115,23 +170,22 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     padding: spacing.lg,
-    paddingTop: 60,
     paddingBottom: spacing.xxxl,
   },
   newReadingButton: {
+    position: 'absolute',
+    left: spacing.lg,
+    zIndex: 100,
     backgroundColor: colors.accent.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.base,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 14,
-    alignSelf: 'center',
-    marginTop: spacing.xxl,
-    marginBottom: spacing.lg,
     // Premium gold shadow with glow
     shadowColor: colors.accent.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
     // Refined border
     borderWidth: 1,
     borderColor: colors.accent.light,

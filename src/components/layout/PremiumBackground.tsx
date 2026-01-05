@@ -54,7 +54,6 @@ const styles = StyleSheet.create({
     borderRadius: 200,
     backgroundColor: colors.accent.glow,
     opacity: 0.03,
-    blur: 100,
   },
   glowBottom: {
     position: 'absolute',
@@ -65,7 +64,6 @@ const styles = StyleSheet.create({
     borderRadius: 250,
     backgroundColor: colors.accent.glow,
     opacity: 0.02,
-    blur: 120,
   },
   noiseTexture: {
     position: 'absolute',

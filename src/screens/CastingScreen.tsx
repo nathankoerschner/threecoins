@@ -5,6 +5,8 @@ import Animated, {
   useAnimatedStyle,
   withRepeat,
   withTiming,
+  withDelay,
+  interpolate,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
@@ -15,6 +17,7 @@ import { useCasting } from '@/hooks/useCasting';
 import { useHaptics } from '@/hooks/useHaptics';
 import { HexagramStack } from '@/components/hexagram/HexagramStack';
 import { AnimatedCoinSet } from '@/components/coins/AnimatedCoinSet';
+import { AnimationMode } from '@/components/coins/AnimatedCoin';
 import { PullToCast } from '@/components/casting/PullToCast';
 import { SwipeableTopArea } from '@/components/casting/SwipeableTopArea';
 import { BackgroundTexture } from '@/components/layout/BackgroundTexture';
@@ -41,6 +44,8 @@ const CastingScreen: React.FC = () => {
   const [animationCompleteCallback, setAnimationCompleteCallback] = useState<(() => void) | null>(null);
   const [isAnimating, setIsAnimating] = useState(false); // Track if any animation is in progress
   const [isRepositioning, setIsRepositioning] = useState(false); // Track if coins are repositioning after first cast
+  const [animationMode, setAnimationMode] = useState<AnimationMode>('entrance'); // Track animation mode
+  const [isEntranceAnimating, setIsEntranceAnimating] = useState(true); // Track if entrance animation should play
   const [question, setQuestion] = useState(''); // User's question for the I Ching reading
   const [activeView, setActiveView] = useState<'question' | 'hexagram'>('question'); // Track which view is active
   const screenWidth = Dimensions.get('window').width; // Get screen width for translation
@@ -56,18 +61,68 @@ const CastingScreen: React.FC = () => {
   // Glow animation for hexagram box when complete
   const glowOpacity = useSharedValue(0);
 
-  // Trigger glow animation when casting completes
+  // Completion animation values
+  const coinsTranslateX = useSharedValue(0);
+  const hexagramScale = useSharedValue(1);
+  const hexagramTranslateY = useSharedValue(0);
+
+  // Trigger completion animations when all 6 lines are visible
   useEffect(() => {
-    if (isComplete) {
+    if (visibleLineCount === 6 && isComplete) {
+      // Glow animation
       glowOpacity.value = withRepeat(
         withTiming(1, { duration: 1000, easing: Easing.inOut(Easing.ease) }),
         -1,
         true
       );
-    } else {
+
+      // Delay coins slide to let user see complete hexagram first
+      coinsTranslateX.value = withDelay(400, withTiming(-screenWidth, {
+        duration: 600,
+        easing: Easing.inOut(Easing.ease),
+      }));
+
+      // Calculate center offset (move hexagram to vertical center)
+      const hexagramCurrentY = hexagramTopMargin + 90; // Approximate center of hexagram
+      const screenCenterY = screenHeight / 2.5 - 100;    // Account for status bar
+      const centerOffset = screenCenterY - hexagramCurrentY;
+
+      // Enlarge hexagram after coins start sliding (delay = 400 + 300 = 700ms)
+      hexagramScale.value = withDelay(700, withTiming(1.4, {
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+      }));
+      hexagramTranslateY.value = withDelay(700, withTiming(centerOffset, {
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+      }));
+    } else if (!isComplete) {
+      // Reset only when starting fresh (not when visibleLineCount is just updating)
       glowOpacity.value = 0;
+      coinsTranslateX.value = 0;
+      hexagramScale.value = 1;
+      hexagramTranslateY.value = 0;
     }
-  }, [isComplete]);
+  }, [visibleLineCount, isComplete]);
+
+  // Trigger entrance animation on mount
+  useEffect(() => {
+    if (isEntranceAnimating) {
+      // Small delay to ensure component is mounted
+      const timer = setTimeout(() => {
+        setShouldAnimate(true);
+        setAnimationKey((prev) => prev + 1);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isEntranceAnimating]);
+
+  // Handle entrance animation completion
+  const handleEntranceAnimationComplete = () => {
+    setIsEntranceAnimating(false);
+    setShouldAnimate(false);
+    setAnimationMode('cast'); // Switch to cast mode for subsequent animations
+  };
 
   const hexagramCardAnimatedStyle = useAnimatedStyle(() => ({
     shadowColor: colors.accent.primary,
@@ -79,6 +134,20 @@ const CastingScreen: React.FC = () => {
 
   const carouselAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: carouselTranslateX.value }],
+  }));
+
+  // Coins slide-out animation
+  const coinsAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: coinsTranslateX.value }],
+    opacity: interpolate(coinsTranslateX.value, [0, -screenWidth * 0.5], [1, 0]),
+  }));
+
+  // Hexagram enlarge animation
+  const hexagramEnlargeStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: hexagramScale.value },
+      { translateY: hexagramTranslateY.value },
+    ],
   }));
 
   // Animated opacity for View Reading button
@@ -95,26 +164,6 @@ const CastingScreen: React.FC = () => {
   const viewReadingButtonAnimatedStyle = useAnimatedStyle(() => ({
     opacity: viewReadingButtonOpacity.value,
   }));
-
-  // Navigate to Reading screen when casting is complete
-  useEffect(() => {
-    if (isComplete && reading && !hasNavigatedToReading.current) {
-      // Wait for final line to fully draw before navigating
-      // Coins animate (max 1700ms) + delay (100ms) + line drawing (400ms) + buffer (300ms)
-      navigationTimeoutRef.current = setTimeout(() => {
-        hasNavigatedToReading.current = true;
-        navigation.navigate('Reading', { reading, question });
-      }, 2500);
-    }
-
-    // Cleanup timeout on unmount or when dependencies change
-    return () => {
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current);
-        navigationTimeoutRef.current = null;
-      }
-    };
-  }, [isComplete, reading, navigation]);
 
   // Trigger animation after throwCoins completes (lines array updates)
   useEffect(() => {
@@ -183,6 +232,9 @@ const CastingScreen: React.FC = () => {
       setIsRepositioning(false);
       setActiveView('question');
       carouselTranslateX.value = 0;
+      coinsTranslateX.value = 0;
+      hexagramScale.value = 1;
+      hexagramTranslateY.value = 0;
       setQuestion('');
       hasNavigatedToReading.current = false;
 
@@ -201,6 +253,10 @@ const CastingScreen: React.FC = () => {
 
       // Reset casting context state
       resetCasting();
+
+      // Trigger entrance animation after reset
+      setAnimationMode('entrance');
+      setIsEntranceAnimating(true);
 
       // Clear the param to prevent re-triggering
       navigation.setParams({ shouldReset: undefined });
@@ -271,6 +327,11 @@ const CastingScreen: React.FC = () => {
     setActiveView('question');
     carouselTranslateX.value = 0;
 
+    // Reset completion animation values
+    coinsTranslateX.value = 0;
+    hexagramScale.value = 1;
+    hexagramTranslateY.value = 0;
+
     // Reset question field
     setQuestion('');
 
@@ -279,6 +340,10 @@ const CastingScreen: React.FC = () => {
 
     // Then reset casting data
     resetCasting();
+
+    // Trigger entrance animation after reset
+    setAnimationMode('entrance');
+    setIsEntranceAnimating(true);
   };
 
   const handleSkipAnimation = () => {
@@ -371,7 +436,7 @@ const CastingScreen: React.FC = () => {
           {/* Screen 1: Hexagram View */}
           <View style={[styles.carouselScreen, { width: screenWidth }]}>
             {visibleLineCount > 0 && (
-              <View style={[styles.hexagramContainer, { marginTop: hexagramTopMargin }]}>
+              <Animated.View style={[styles.hexagramContainer, { marginTop: hexagramTopMargin }, hexagramEnlargeStyle]}>
                 <Animated.View style={[styles.hexagramCard, hexagramCardAnimatedStyle]}>
                   <HexagramStack
                     lines={lines.slice(0, visibleLineCount)}
@@ -396,7 +461,7 @@ const CastingScreen: React.FC = () => {
                     <Text style={styles.startOverText}>Start Over</Text>
                   </TouchableOpacity>
                 </Animated.View>
-              </View>
+              </Animated.View>
             )}
           </View>
           </Animated.View>
@@ -407,10 +472,10 @@ const CastingScreen: React.FC = () => {
       <View style={styles.flexibleSpacer} />
 
       {/* Absolutely positioned coins container - fixed to bottom */}
-      <View style={[styles.absoluteCoinsContainer, { bottom: coinsBottomOffset }]}>
+      <Animated.View style={[styles.absoluteCoinsContainer, { bottom: coinsBottomOffset }, coinsAnimatedStyle]}>
         <PullToCast
           onRelease={handleThrowCoins}
-          isDisabled={shouldAnimate || isThrowingCoins || isComplete}
+          isDisabled={shouldAnimate || isThrowingCoins || isComplete || isEntranceAnimating}
         >
           <View style={styles.coinDisplay}>
             <AnimatedCoinSet
@@ -418,13 +483,14 @@ const CastingScreen: React.FC = () => {
               coins={lines.length > 0 ? lines[lines.length - 1].coins : [true, false, true]}
               size={100}
               shouldAnimate={shouldAnimate}
+              animationMode={animationMode}
               initialY={pullDistance}
               pullDirection={pullDirection}
-              onAnimationComplete={handleAnimationComplete}
+              onAnimationComplete={isEntranceAnimating ? handleEntranceAnimationComplete : handleAnimationComplete}
             />
           </View>
         </PullToCast>
-      </View>
+      </Animated.View>
 
       {/* Tap-to-skip overlay - only visible during animation */}
       {(isAnimating || shouldAnimate) && (
@@ -526,7 +592,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   hexagramContainer: {
-    height: 240,
+    height: 340,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -540,10 +606,10 @@ const styles = StyleSheet.create({
   },
   hexagramCard: {
     backgroundColor: colors.background.tertiary,
-    padding: spacing.lg,
+    padding: spacing.md,
     borderRadius: 16,
-    width: 220,
-    height: 180,
+    width: 230,
+    height: 300,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

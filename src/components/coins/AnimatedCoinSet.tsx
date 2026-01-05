@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { AnimatedCoin } from './AnimatedCoin';
+import { AnimatedCoin, AnimationMode } from './AnimatedCoin';
 import { CoinAnimationConfig, DEFAULT_ANIMATION_CONFIG } from '@/hooks/useAnimations';
 import { spacing } from '@/theme';
 import { PullDirection } from '@/types';
@@ -10,6 +10,7 @@ interface AnimatedCoinSetProps {
   size?: number;
   config?: CoinAnimationConfig;
   shouldAnimate: boolean; // Controlled animation trigger
+  animationMode?: AnimationMode; // 'cast' for coin toss, 'entrance' for app open/reset
   initialY?: number; // Starting Y position from pull gesture
   pullDirection?: PullDirection; // Pull direction for mirrored animation
   onAnimationComplete?: () => void;
@@ -20,6 +21,7 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
   size = 70,
   config = DEFAULT_ANIMATION_CONFIG,
   shouldAnimate,
+  animationMode = 'cast',
   initialY = 0,
   pullDirection = 'down',
   onAnimationComplete,
@@ -42,35 +44,42 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
     if (shouldAnimate) {
       setCompletedCoins(0);
 
-      // Generate random configs for each coin
-      const randomConfigs = [
-        {
+      if (animationMode === 'entrance') {
+        // Entrance mode: use staggered delays, consistent config
+        const entranceConfig = {
           ...config,
-          rotations: 3 + Math.floor(Math.random() * 3), // 3-5 rotations
-          duration: 1200 + Math.random() * 500, // 1200-1700ms
-          staggerDelay: config.staggerDelay,
-        },
-        {
-          ...config,
-          rotations: 3 + Math.floor(Math.random() * 3),
-          duration: 1200 + Math.random() * 500,
-          staggerDelay: config.staggerDelay,
-        },
-        {
-          ...config,
-          rotations: 3 + Math.floor(Math.random() * 3),
-          duration: 1200 + Math.random() * 500,
-          staggerDelay: config.staggerDelay,
-        },
-      ];
-
-      // All coins start at the same time (no stagger)
-      const delays = [0, 0, 0];
-
-      setCoinConfigs(randomConfigs);
-      setCoinDelays(delays);
+          duration: 700,
+          rotations: 0, // No rotations for entrance, just Z spin handled in AnimatedCoin
+        };
+        setCoinConfigs([entranceConfig, entranceConfig, entranceConfig]);
+        setCoinDelays([0, 120, 240]); // Staggered delays for entrance
+      } else {
+        // Cast mode: random configs, no stagger
+        const randomConfigs = [
+          {
+            ...config,
+            rotations: 3 + Math.floor(Math.random() * 3), // 3-5 rotations
+            duration: 1200 + Math.random() * 500, // 1200-1700ms
+            staggerDelay: config.staggerDelay,
+          },
+          {
+            ...config,
+            rotations: 3 + Math.floor(Math.random() * 3),
+            duration: 1200 + Math.random() * 500,
+            staggerDelay: config.staggerDelay,
+          },
+          {
+            ...config,
+            rotations: 3 + Math.floor(Math.random() * 3),
+            duration: 1200 + Math.random() * 500,
+            staggerDelay: config.staggerDelay,
+          },
+        ];
+        setCoinConfigs(randomConfigs);
+        setCoinDelays([0, 0, 0]); // All coins start at the same time
+      }
     }
-  }, [shouldAnimate, config]);
+  }, [shouldAnimate, animationMode, config]);
 
   // Call completion callback when all coins are done
   // Use ref to prevent re-triggering when callback reference changes (e.g., during streaming)
@@ -99,6 +108,7 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
           delay={effectiveDelays[0]}
           config={effectiveConfigs[0]}
           shouldAnimate={shouldAnimate}
+          animationMode={animationMode}
           initialY={initialY}
           pullDirection={pullDirection}
           onAnimationComplete={handleCoinComplete}
@@ -109,6 +119,7 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
           delay={effectiveDelays[1]}
           config={effectiveConfigs[1]}
           shouldAnimate={shouldAnimate}
+          animationMode={animationMode}
           initialY={initialY}
           pullDirection={pullDirection}
           onAnimationComplete={handleCoinComplete}
@@ -119,6 +130,7 @@ export const AnimatedCoinSet: React.FC<AnimatedCoinSetProps> = ({
           delay={effectiveDelays[2]}
           config={effectiveConfigs[2]}
           shouldAnimate={shouldAnimate}
+          animationMode={animationMode}
           initialY={initialY}
           pullDirection={pullDirection}
           onAnimationComplete={handleCoinComplete}

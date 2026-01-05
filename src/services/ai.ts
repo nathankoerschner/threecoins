@@ -5,20 +5,37 @@ import { Hexagram } from '@/types';
 
 const functions = getFunctions();
 
+interface HexagramInfo {
+  number: number;
+  englishName: string;
+  chineseName: string;
+}
+
 interface InterpretationRequestData {
-  primaryHexagram: {
-    number: number;
-    englishName: string;
-    chineseName: string;
-  };
-  relatingHexagram: {
-    number: number;
-    englishName: string;
-    chineseName: string;
-  } | null;
+  primaryHexagram: HexagramInfo;
+  relatingHexagram: HexagramInfo | null;
   changingLines: number[];
   question?: string;
   readingId: string;
+}
+
+interface ChatRequestData {
+  message: string;
+  chatId: string;
+  readingContext: {
+    primaryHexagram: HexagramInfo;
+    relatingHexagram: HexagramInfo | null;
+    changingLines: number[];
+    question?: string;
+    interpretation: string;
+  };
+  previousMessages: Array<{ role: 'user' | 'assistant'; content: string }>;
+}
+
+interface ChatResponse {
+  success: boolean;
+  chatId: string;
+  message: string;
 }
 
 interface InterpretationResponse {
@@ -206,4 +223,72 @@ export const moderateQuestion = async (question: string): Promise<{ approved: bo
     // If moderation fails, allow the question (fail-open)
     return { approved: true };
   }
+};
+
+// Generate a unique chat ID
+export const generateChatId = (): string => {
+  return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+};
+
+// Start chat streaming and return chatId immediately
+export const startChatStreaming = (
+  message: string,
+  readingContext: ChatRequestData['readingContext'],
+  previousMessages: ChatRequestData['previousMessages'],
+  userId: string
+): string => {
+  const chatId = generateChatId();
+
+  const requestData: ChatRequestData = {
+    message,
+    chatId,
+    readingContext,
+    previousMessages,
+  };
+
+  const chatAboutReading = httpsCallable<ChatRequestData, ChatResponse>(
+    functions,
+    'chatAboutReading'
+  );
+
+  // Fire Cloud Function without awaiting - errors will be reflected in RTDB status
+  chatAboutReading(requestData).catch(err => {
+    console.error('Chat cloud function error (will be reflected in RTDB):', err);
+  });
+
+  return chatId;
+};
+
+// Subscribe to chat response streaming
+export const subscribeToChatResponse = (
+  userId: string,
+  chatId: string,
+  onUpdate: (content: string, status: string) => void,
+  onError: (error: string) => void
+): (() => void) => {
+  const chatRef = ref(database, `chats/${userId}/${chatId}`);
+
+  const unsubscribe = onValue(
+    chatRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val() as StreamingContent;
+
+        if (data.status === 'error') {
+          onError(data.error || 'Unknown error occurred');
+        } else {
+          onUpdate(data.content, data.status);
+        }
+      }
+    },
+    (error) => {
+      console.error('Error subscribing to chat response:', error);
+      onError(error.message);
+    }
+  );
+
+  // Return cleanup function
+  return () => {
+    off(chatRef);
+  };
 };

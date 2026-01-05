@@ -9,6 +9,14 @@ export interface HexagramInfo {
   chineseName: string;
 }
 
+export interface ReadingContext {
+  primaryHexagram: HexagramInfo;
+  relatingHexagram: HexagramInfo | null;
+  changingLines: number[];
+  question?: string;
+  interpretation: string;
+}
+
 export interface UserData {
   lastFreeReading?: {
     toMillis: () => number;
@@ -122,4 +130,48 @@ export function canUserMakeReading(
   canUseFree: boolean
 ): boolean {
   return hasCredits || hasActiveSubscription || canUseFree;
+}
+
+/**
+ * Build the system prompt for chat about a reading
+ * @param {ReadingContext} context - The reading context including hexagrams and interpretation
+ * @return {string} The formatted system prompt for AI chat
+ */
+export function buildChatSystemPrompt(context: ReadingContext): string {
+  const primary = context.primaryHexagram;
+  const relating = context.relatingHexagram;
+
+  let prompt = `You are a wise I Ching counselor continuing a conversation about a reading.
+
+The reading context:
+- Primary Hexagram: #${primary.number} ${primary.englishName} (${primary.chineseName})`;
+
+  if (relating) {
+    prompt += `
+- Relating Hexagram: #${relating.number} ${relating.englishName} (${relating.chineseName})`;
+  }
+
+  if (context.changingLines.length > 0) {
+    prompt += `
+- Changing Lines: ${context.changingLines.join(', ')}`;
+  }
+
+  if (context.question) {
+    prompt += `
+- Original Question: "${context.question}"`;
+  }
+
+  prompt += `
+
+The interpretation already given:
+${context.interpretation}
+
+Guidelines:
+- Be concise and direct (2-4 sentences typically)
+- Reference the specific hexagrams and lines when relevant
+- Provide practical wisdom grounded in the reading
+- Do not repeat the full interpretation unless asked
+- Maintain a warm but wise tone`;
+
+  return prompt;
 }

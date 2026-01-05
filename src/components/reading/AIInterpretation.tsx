@@ -1,10 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
-// Token-based height calculation for fixed response box
-// 1500 tokens × 4 chars/token = 6000 chars
-// Use ~500px visible height with internal scroll
-const RESPONSE_BOX_HEIGHT = 500;
 import Markdown from 'react-native-markdown-display';
 import { useAuth } from '@/context/AuthContext';
 import { useCastingContext } from '@/context/CastingContext';
@@ -17,6 +13,7 @@ interface AIInterpretationProps {
   relatingHexagram: Hexagram | null;
   changingLines: number[];
   question?: string;
+  onComplete?: (content: string) => void;
 }
 
 export const AIInterpretation: React.FC<AIInterpretationProps> = ({
@@ -24,6 +21,7 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
   relatingHexagram,
   changingLines,
   question,
+  onComplete,
 }) => {
   const { user } = useAuth();
   const { cachedInterpretation, setCachedInterpretation } = useCastingContext();
@@ -201,6 +199,13 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
     };
   }, [user, cachedInterpretation?.status, cachedInterpretation?.readingId]); // Re-run when status changes to handle resubscription
 
+  // Call onComplete when interpretation is complete
+  useEffect(() => {
+    if (status === 'complete' && content && onComplete) {
+      onComplete(content);
+    }
+  }, [status, content, onComplete]);
+
   // Render loading state
   if (status === 'loading') {
     return (
@@ -232,18 +237,12 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
     <View style={styles.container}>
       <Text style={styles.title}>Interpretation</Text>
       <View style={styles.contentContainer}>
-        <ScrollView
-          style={styles.internalScroll}
-          contentContainerStyle={styles.internalScrollContent}
-          showsVerticalScrollIndicator={true}
-        >
-          <Markdown style={markdownStyles}>{content}</Markdown>
-          {status === 'streaming' && (
-            <View style={styles.streamingIndicator}>
-              <Text style={styles.streamingDot}>●</Text>
-            </View>
-          )}
-        </ScrollView>
+        <Markdown style={markdownStyles}>{content}</Markdown>
+        {status === 'streaming' && (
+          <View style={styles.streamingIndicator}>
+            <Text style={styles.streamingDot}>●</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -264,7 +263,6 @@ const styles = StyleSheet.create({
     ...typography.textShadow.gold,
   },
   contentContainer: {
-    position: 'relative',
     backgroundColor: colors.background.tertiary,
     padding: spacing.lg,
     borderRadius: 16,
@@ -276,15 +274,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 6,
     elevation: 4,
-    // Fixed height with internal scroll
-    height: RESPONSE_BOX_HEIGHT,
-    overflow: 'hidden',
-  },
-  internalScroll: {
-    flex: 1,
-  },
-  internalScrollContent: {
-    paddingBottom: spacing.lg,
   },
   content: {
     fontSize: typography.fontSize.md,
@@ -310,7 +299,7 @@ const styles = StyleSheet.create({
   loadingContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    height: RESPONSE_BOX_HEIGHT,
+    paddingVertical: spacing.xxl,
     backgroundColor: colors.background.tertiary,
     borderRadius: 16,
     borderWidth: 1,
@@ -336,9 +325,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 3,
-    // Fixed height for consistency
-    height: RESPONSE_BOX_HEIGHT,
-    justifyContent: 'center',
   },
   errorTitle: {
     fontSize: typography.fontSize.lg,

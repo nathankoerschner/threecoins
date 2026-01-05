@@ -16,12 +16,15 @@ import { Coin } from './Coin';
 import { CoinAnimationConfig, DEFAULT_ANIMATION_CONFIG } from '@/hooks/useAnimations';
 import { PullDirection } from '@/types';
 
+export type AnimationMode = 'cast' | 'entrance';
+
 interface AnimatedCoinProps {
   isHeads: boolean;
   size?: number;
   delay?: number;
   config?: CoinAnimationConfig;
   shouldAnimate: boolean; // Controlled animation trigger
+  animationMode?: AnimationMode; // 'cast' for coin toss, 'entrance' for app open/reset
   initialY?: number; // Starting Y position (from pull gesture)
   pullDirection?: PullDirection; // Pull direction for mirrored animation
   onAnimationComplete?: () => void;
@@ -33,6 +36,7 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
   delay = 0,
   config = DEFAULT_ANIMATION_CONFIG,
   shouldAnimate,
+  animationMode = 'cast',
   initialY = 0,
   pullDirection = 'down',
   onAnimationComplete,
@@ -100,9 +104,64 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
       return;
     }
 
-    // Stop idle bobbing when casting animation starts
+    // Stop idle bobbing when animation starts
     idleBobbingY.value = withTiming(0, { duration: 200 });
 
+    // ENTRANCE ANIMATION: Coins thrown up from base position, then land flat
+    if (animationMode === 'entrance') {
+      // Reset to start state
+      rotationX.value = 0;
+      rotationY.value = 0;
+      translateY.value = 0;
+      scale.value = 1;
+      opacity.value = 1;
+
+      const startEntranceAnimation = () => {
+        // X-axis rotation (flip) - similar to cast animation
+        // Random direction and 2-4 full rotations for coin flip effect
+        const directionX = Math.random() > 0.5 ? 1 : -1;
+        const numRotations = 2 + Math.floor(Math.random() * 3); // 2-4 rotations
+        const totalRotationX = numRotations * 360 * directionX;
+        rotationX.value = withTiming(totalRotationX, {
+          duration: 1000,
+          easing: Easing.out(Easing.cubic),
+        });
+
+        // Random slight Z spin (30-90 degrees) for visual interest
+        const directionZ = Math.random() > 0.5 ? 1 : -1;
+        const zSpinAmount = 30 + Math.random() * 60; // 30-90 degrees
+        rotationZ.value = withTiming(rotationZ.value + zSpinAmount * directionZ, {
+          duration: 1000,
+          easing: Easing.out(Easing.cubic),
+        });
+
+        // Throw up, then fall down with spring
+        translateY.value = withSequence(
+          // Phase 1: Rise up (thrown into air)
+          withTiming(-200, {
+            duration: 400,
+            easing: Easing.out(Easing.cubic),
+          }),
+          // Phase 2: Fall back down with spring physics
+          withSpring(0, {
+            damping: 12,
+            stiffness: 180,
+            mass: 0.8,
+          }, () => {
+            // Animation complete callback on UI thread
+            if (onAnimationComplete) {
+              runOnJS(onAnimationComplete)();
+            }
+          })
+        );
+      };
+
+      // Start animation after delay
+      const timer = setTimeout(startEntranceAnimation, delay);
+      return () => clearTimeout(timer);
+    }
+
+    // CAST ANIMATION: Standard coin toss animation
     // Start from pulled position (or default based on direction if no pull)
     const startY = initialY !== 0 ? initialY : (pullDirection === 'up' ? -100 : -100);
 
@@ -256,7 +315,7 @@ export const AnimatedCoin: React.FC<AnimatedCoinProps> = ({
     // Start animation after delay
     const timer = setTimeout(startAnimation, delay);
     return () => clearTimeout(timer);
-  }, [shouldAnimate, delay, config]);
+  }, [shouldAnimate, animationMode, delay, config]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,

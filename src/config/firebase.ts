@@ -1,5 +1,7 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, initializeAuth, getReactNativePersistence } from 'firebase/auth';
+import { getAuth, initializeAuth, Auth } from 'firebase/auth';
+// @ts-expect-error - getReactNativePersistence exists but types are incomplete
+import { getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getDatabase } from 'firebase/database';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,7 +27,7 @@ if (getApps().length === 0) {
 }
 
 // Initialize Firebase Auth with AsyncStorage persistence
-let auth;
+let auth: Auth;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
