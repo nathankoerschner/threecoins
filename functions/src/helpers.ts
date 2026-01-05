@@ -44,23 +44,20 @@ export function buildUserPrompt(
 ): string {
   let prompt = '';
 
-  if (question) {
-    prompt += `Question is: "${question}"\n\n`;
-  }
-
-  prompt += `Primary Hexagram: #${primary.number} ${primary.englishName} (${primary.chineseName})\n`;
+  prompt += `Tell me about iching hexagram ${primary.number} `;
 
   if (changingLines.length > 0) {
-    prompt += `Changing Lines: ${changingLines.join(', ')}\n`;
+    prompt += `(with changing lines ${changingLines.join(', ')}) `;
   }
-
   if (relating) {
-    prompt += `Relating Hexagram: #${relating.number} ${relating.englishName} (${relating.chineseName})\n`;
+    prompt += `(changes to hexagram ${relating.number}) `;
   } else {
-    prompt += 'No changing lines.\n';
+    prompt += '';
   }
 
-  prompt += '\nPlease provide an interpretation';
+  if (question) {
+    prompt += `as it applies to ${question}.`;
+  }
 
   return prompt;
 }
