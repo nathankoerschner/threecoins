@@ -72,7 +72,7 @@ const ReadingScreen: React.FC = () => {
     <BackgroundTexture>
       {/* Close button - positioned with equal spacing from top and right */}
       <TouchableOpacity
-        style={[styles.closeButton, { top: insets.top + spacing.md }]}
+        style={[styles.closeButton, { top: insets.top }]}
         onPress={handleDismiss}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >

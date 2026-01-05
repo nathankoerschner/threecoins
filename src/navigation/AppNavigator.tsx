@@ -52,7 +52,7 @@ export const AppNavigator: React.FC = () => {
           name="Reading"
           component={ReadingScreen}
           options={{
-            presentation: 'fullScreenModal', // Full screen modal without dismiss overlay
+            presentation: 'modal', // Card-style modal with swipe to dismiss
             animation: 'slide_from_bottom',
             gestureEnabled: true, // Enable swipe to dismiss
             gestureDirection: 'vertical',

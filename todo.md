@@ -1,13 +1,9 @@
-slight jumping when scrolling far to the right or left on coins
+There is some slight jumping when scrolling far to the right or left on coins
 
-smoothe out animation of words streaming in
+The words streaming in during the AI reading come in a bit choppy, I would like them to be smoother 
 
-fix x button on reading page
+There is a ton of bolding in the AI response that comes back from the API. I would like for there to be less (tone down bolding on interpretation)
 
-tone down bolding on interpretation
+The magnified hexagram (after being selected) is only really in the top half of the screen. The size is good, but I would like for it to be more centered. Be sure to move the other UI elements around it too
 
-Center the magnified hexagram a bit more 
-
-impliment paywayll
-
-Get rid of underlined text
+Get rid of underlined text and use the frontend styling tool to replace the underlined text with something sleek and nice
