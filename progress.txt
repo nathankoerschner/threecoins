@@ -1,0 +1,25 @@
+## 2026-01-05: Smooth AI Text Streaming
+
+### Problem
+AI reading text was appearing choppy because react-native-markdown-display re-parses and re-renders the entire markdown content on every Firebase streaming update.
+
+### Solution
+Implemented buffered text rendering in both `AIInterpretation.tsx` and `ReadingChat.tsx`:
+
+1. **Buffered Display**: Content from Firebase is stored in a ref, while displayed content is managed separately in state
+2. **Progressive Reveal**: A 50ms interval timer reveals characters progressively (3-N chars per tick, scaling with backlog)
+3. **Smooth Catch-up**: When streaming completes, any remaining buffered content is immediately shown
+4. **Streaming Indicator**: Gold dot indicator remains visible while content is still being revealed
+
+### Files Modified
+- `src/components/reading/AIInterpretation.tsx` - Added buffered streaming logic
+- `src/components/reading/ReadingChat.tsx` - Added reusable `StreamingText` component with same buffering approach
+
+### Technical Notes
+- `STREAM_BUFFER_INTERVAL = 50` ms provides smooth 20fps text updates
+- Character addition rate: `Math.min(Math.max(3, Math.ceil(remaining / 5)), remaining)` ensures smooth reveal while catching up when needed
+- Both components now use the same buffering strategy for consistency
+
+### Testing
+- TypeScript: Passes (`npx tsc --noEmit`)
+- Jest: All 124 tests pass

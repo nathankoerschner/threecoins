@@ -1,0 +1,53 @@
+[
+  {
+    "category": "ui",
+    "description": "Fix slight jumping when scrolling far to the right or left on coins",
+    "steps": [
+      "Scroll coins far to the right",
+      "Scroll coins far to the left",
+      "Verify no jumping or jitter occurs during scrolling"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ui",
+    "description": "Improve smoothness of AI reading text streaming - words come in choppy",
+    "steps": [
+      "Start an AI reading",
+      "Observe the text as it streams in",
+      "Verify words appear smoothly without choppy transitions"
+    ],
+    "passes": true,
+    "implementation_notes": "Added buffered text streaming with 50ms interval. Characters are revealed progressively (3-N chars per tick based on backlog) instead of direct Firebase updates. Applied to both AIInterpretation and ReadingChat components."
+  },
+  {
+    "category": "ui",
+    "description": "Reduce excessive bolding in AI interpretation response",
+    "steps": [
+      "Complete a reading to trigger AI interpretation",
+      "Review the interpretation text",
+      "Verify bolding is toned down and used sparingly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ui",
+    "description": "Center the magnified hexagram on screen and adjust surrounding UI elements",
+    "steps": [
+      "Cast the coins 6 times to have a selected hexagram magnified",
+      "Verify the magnified hexagram is vertically centered (not just top half)",
+      "Verify surrounding UI elements are properly positioned around it"
+    ],
+    "passes": false
+  },
+  {
+    "category": "ui",
+    "description": "Replace underlined text with sleek frontend styling",
+    "steps": [
+      "Identify all underlined text in the app",
+      "Verify underlines are removed",
+      "Verify replacement styling looks sleek and consistent"
+    ],
+    "passes": false
+  }
+]

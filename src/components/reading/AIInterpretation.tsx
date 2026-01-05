@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 import Markdown from 'react-native-markdown-display';
@@ -7,6 +7,9 @@ import { useCastingContext } from '@/context/CastingContext';
 import { startInterpretationStreaming, subscribeToInterpretation } from '@/services/ai';
 import { Hexagram } from '@/types';
 import { colors, typography, spacing } from '@/theme';
+
+// Buffer interval for smooth text streaming (ms)
+const STREAM_BUFFER_INTERVAL = 50;
 
 interface AIInterpretationProps {
   primaryHexagram: Hexagram;
@@ -27,11 +30,64 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
   const { cachedInterpretation, setCachedInterpretation } = useCastingContext();
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const bufferIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const targetContentRef = useRef<string>('');
+
+  // Displayed content for smooth streaming - buffers updates for smoother rendering
+  const [displayedContent, setDisplayedContent] = useState(cachedInterpretation?.content ?? '');
 
   // Use cached interpretation if available, otherwise use default states
   const content = cachedInterpretation?.content ?? '';
   const status = cachedInterpretation?.status ?? 'loading';
   const error = cachedInterpretation?.error ?? null;
+
+  // Smooth content update function - reveals content gradually
+  const updateDisplayedContent = useCallback(() => {
+    const target = targetContentRef.current;
+    setDisplayedContent(current => {
+      if (current === target) return current;
+
+      // Calculate how many characters to add per tick for smooth streaming
+      const remaining = target.length - current.length;
+      if (remaining <= 0) return target;
+
+      // Add characters progressively - faster for larger gaps to catch up
+      const charsToAdd = Math.min(Math.max(3, Math.ceil(remaining / 5)), remaining);
+      return target.slice(0, current.length + charsToAdd);
+    });
+  }, []);
+
+  // Start/stop the buffer interval based on streaming status
+  useEffect(() => {
+    if (status === 'streaming') {
+      // Start buffer interval for smooth updates
+      if (!bufferIntervalRef.current) {
+        bufferIntervalRef.current = setInterval(updateDisplayedContent, STREAM_BUFFER_INTERVAL);
+      }
+    } else {
+      // Stop buffer interval and show final content immediately
+      if (bufferIntervalRef.current) {
+        clearInterval(bufferIntervalRef.current);
+        bufferIntervalRef.current = null;
+      }
+      // Immediately sync to final content when streaming completes
+      if (status === 'complete' || status === 'error') {
+        setDisplayedContent(content);
+      }
+    }
+
+    return () => {
+      if (bufferIntervalRef.current) {
+        clearInterval(bufferIntervalRef.current);
+        bufferIntervalRef.current = null;
+      }
+    };
+  }, [status, content, updateDisplayedContent]);
+
+  // Update target content ref when cached content changes
+  useEffect(() => {
+    targetContentRef.current = content;
+  }, [content]);
 
   useEffect(() => {
     if (!user) {
@@ -237,8 +293,8 @@ export const AIInterpretation: React.FC<AIInterpretationProps> = ({
     <View style={styles.container}>
       <Text style={styles.title}>Interpretation</Text>
       <View style={styles.contentContainer}>
-        <Markdown style={markdownStyles}>{content}</Markdown>
-        {status === 'streaming' && (
+        <Markdown style={markdownStyles}>{displayedContent}</Markdown>
+        {(status === 'streaming' || (status === 'complete' && displayedContent.length < content.length)) && (
           <View style={styles.streamingIndicator}>
             <Text style={styles.streamingDot}>●</Text>
           </View>

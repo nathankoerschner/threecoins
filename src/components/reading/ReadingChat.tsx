@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,71 @@ import { useAuth } from '@/context/AuthContext';
 import { startChatStreaming, subscribeToChatResponse, generateChatId } from '@/services/ai';
 import { Hexagram } from '@/types';
 import { colors, typography, spacing } from '@/theme';
+
+// Buffer interval for smooth text streaming (ms)
+const STREAM_BUFFER_INTERVAL = 50;
+
+// Component for smooth streaming text display
+interface StreamingTextProps {
+  content: string;
+  isStreaming: boolean;
+  markdownStyles: StyleSheet.NamedStyles<any>;
+}
+
+const StreamingText: React.FC<StreamingTextProps> = ({ content, isStreaming, markdownStyles }) => {
+  const [displayedContent, setDisplayedContent] = useState(content);
+  const targetContentRef = useRef(content);
+  const bufferIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  const updateDisplayedContent = useCallback(() => {
+    const target = targetContentRef.current;
+    setDisplayedContent(current => {
+      if (current === target) return current;
+      const remaining = target.length - current.length;
+      if (remaining <= 0) return target;
+      const charsToAdd = Math.min(Math.max(3, Math.ceil(remaining / 5)), remaining);
+      return target.slice(0, current.length + charsToAdd);
+    });
+  }, []);
+
+  useEffect(() => {
+    targetContentRef.current = content;
+  }, [content]);
+
+  useEffect(() => {
+    if (isStreaming) {
+      if (!bufferIntervalRef.current) {
+        bufferIntervalRef.current = setInterval(updateDisplayedContent, STREAM_BUFFER_INTERVAL);
+      }
+    } else {
+      if (bufferIntervalRef.current) {
+        clearInterval(bufferIntervalRef.current);
+        bufferIntervalRef.current = null;
+      }
+      setDisplayedContent(content);
+    }
+
+    return () => {
+      if (bufferIntervalRef.current) {
+        clearInterval(bufferIntervalRef.current);
+        bufferIntervalRef.current = null;
+      }
+    };
+  }, [isStreaming, content, updateDisplayedContent]);
+
+  const showIndicator = isStreaming || displayedContent.length < content.length;
+
+  return (
+    <>
+      <Markdown style={markdownStyles}>{displayedContent}</Markdown>
+      {showIndicator && displayedContent && (
+        <View style={styles.streamingIndicator}>
+          <Text style={styles.streamingDot}>●</Text>
+        </View>
+      )}
+    </>
+  );
+};
 
 interface ChatMessage {
   id: string;
@@ -164,15 +229,14 @@ export const ReadingChat: React.FC<ReadingChatProps> = ({
           ) : (
             <>
               {message.content ? (
-                <Markdown style={markdownStyles}>{message.content}</Markdown>
+                <StreamingText
+                  content={message.content}
+                  isStreaming={message.status === 'streaming'}
+                  markdownStyles={markdownStyles}
+                />
               ) : (
                 <View style={styles.loadingContainer}>
                   <ActivityIndicator size="small" color={colors.accent.primary} />
-                </View>
-              )}
-              {message.status === 'streaming' && message.content && (
-                <View style={styles.streamingIndicator}>
-                  <Text style={styles.streamingDot}>●</Text>
                 </View>
               )}
             </>
