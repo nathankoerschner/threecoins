@@ -27,7 +27,7 @@
       "Review the interpretation text",
       "Verify bolding is toned down and used sparingly"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "ui",

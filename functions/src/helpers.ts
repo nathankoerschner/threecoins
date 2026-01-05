@@ -59,6 +59,8 @@ export function buildUserPrompt(
     prompt += `as it applies to ${question}.`;
   }
 
+  prompt += ' Use minimal bold formatting in your response.';
+
   return prompt;
 }
 

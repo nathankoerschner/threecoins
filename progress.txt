@@ -2,3 +2,16 @@
 
 ### Status
 Reverted - original streaming behavior preferred by user. Task marked complete in PRD.
+
+## 2026-01-05: Reduce Excessive Bolding in AI Interpretation
+
+### Status
+Complete - deployed to production.
+
+### Changes
+- Added "Use minimal bold formatting in your response." instruction to the AI prompt in `functions/src/helpers.ts:buildUserPrompt()`
+- This instructs the AI to use less **bold** markdown in interpretations
+
+### Notes
+- Simple one-line change to the prompt
+- Functions deployed successfully to Firebase
