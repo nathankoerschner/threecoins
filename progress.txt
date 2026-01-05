@@ -1,3 +1,23 @@
+## 2026-01-05: Center Magnified Hexagram on Screen
+
+### Status
+Complete - hexagram now vertically centers when magnified after casting all 6 lines.
+
+### Changes
+- Modified `src/screens/CastingScreen.tsx` to calculate and animate a `translateY` offset when the hexagram is magnified
+- The centering calculates the available screen height (minus top padding) and moves the hexagram card to the center
+- Animation syncs with the existing scale animation (700ms delay, 500ms duration)
+
+### Technical Details
+- Available height = screenHeight - 60 (top padding)
+- Target center = availableHeight / 2
+- Current card center = hexagramTopMargin + 170 (half of container height)
+- TranslateY offset animates the difference to center the card
+
+### Notes
+- The View Reading button and Start Over link remain attached below the hexagram and move with it
+- Coins slide out left before centering begins, freeing up the bottom of the screen
+
 ## 2026-01-05: Smooth AI Text Streaming
 
 ### Status

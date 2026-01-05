@@ -82,13 +82,24 @@ const CastingScreen: React.FC = () => {
         easing: Easing.inOut(Easing.ease),
       }));
 
-      // Enlarge hexagram in place (no vertical translation to avoid overlapping top bar)
+      // Enlarge hexagram and center it on screen
       hexagramScale.value = withDelay(700, withTiming(1.2, {
         duration: 500,
         easing: Easing.out(Easing.ease),
       }));
-      // Keep hexagram in place - no vertical translation
-      hexagramTranslateY.value = 0;
+      // Calculate translateY to center hexagram on screen
+      // Available height: screenHeight - 60 (top padding)
+      // Current top position: hexagramTopMargin
+      // hexagramContainer height: 340, hexagramCard height: 300
+      // We want the card center at the center of available screen space
+      const availableHeight = screenHeight - 60;
+      const targetCenterY = availableHeight / 2;
+      const currentCardCenterY = hexagramTopMargin + 170; // 170 = half of hexagramContainer height (340/2)
+      const centeringOffset = targetCenterY - currentCardCenterY;
+      hexagramTranslateY.value = withDelay(700, withTiming(centeringOffset, {
+        duration: 500,
+        easing: Easing.out(Easing.ease),
+      }));
     } else if (!isComplete) {
       // Reset only when starting fresh (not when visibleLineCount is just updating)
       glowOpacity.value = 0;

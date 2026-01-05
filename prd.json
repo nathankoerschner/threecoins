@@ -37,7 +37,7 @@
       "Verify the magnified hexagram is vertically centered (not just top half)",
       "Verify surrounding UI elements are properly positioned around it"
     ],
-    "passes": false
+    "passes": true
   },
   {
     "category": "ui",
