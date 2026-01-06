@@ -53,7 +53,7 @@ const CastingScreen: React.FC = () => {
   const hexagramTopMargin = Math.round(
     screenHeight * (screenHeight >= 800 ? 0.1 : 0.08)
   );
-  const coinsBottomOffset = screenHeight <= 700 ? 60 : 100;
+  const coinsBottomOffset = screenHeight <= 700 ? 0 : 100;
   const carouselTranslateX = useSharedValue(0); // Animated translateX for carousel
   const hasNavigatedToReading = useRef(false); // Track if we've already navigated to reading screen
   const navigationTimeoutRef = useRef<NodeJS.Timeout | null>(null); // Track navigation timeout
@@ -87,13 +87,16 @@ const CastingScreen: React.FC = () => {
         duration: 500,
         easing: Easing.out(Easing.ease),
       }));
-      // Calculate translateY to center hexagram on screen
+      // Calculate translateY to position hexagram on screen
       // Available height: screenHeight - 60 (top padding)
       // Current top position: hexagramTopMargin
       // hexagramContainer height: 340, hexagramCard height: 300
-      // We want the card center at the center of available screen space
+      // Position so the content block (hexagram + buttons below) is centered slightly above middle
+      // Use 40% from top for larger screens, with minimum constraint for small devices
       const availableHeight = screenHeight - 60;
-      const targetCenterY = availableHeight / 2;
+      const scaledCardHalfHeight = 150 * 1.2; // half of 300px card scaled by 1.2
+      const minTargetY = 60 + scaledCardHalfHeight + 20; // status bar + half card + padding
+      const targetCenterY = Math.max(availableHeight * 0.4, minTargetY);
       const currentCardCenterY = hexagramTopMargin + 170; // 170 = half of hexagramContainer height (340/2)
       const centeringOffset = targetCenterY - currentCardCenterY;
       hexagramTranslateY.value = withDelay(700, withTiming(centeringOffset, {
